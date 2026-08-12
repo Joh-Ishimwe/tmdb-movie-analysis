@@ -1,0 +1,47 @@
+# Secrets -- never committed
+.env
+*.pem
+*.key
+
+# Data -- generated, not committed (see docs/pipeline_design.md)
+data/raw/
+data/raw/movies/          # cached API responses -- regenerable
+data/staging/
+data/processed/
+!data/samples/
+!data/**/.gitkeep
+
+# Generated figures
+reports/figures/*.png
+
+# Logs
+logs/
+*.log
+*.jsonl
+
+# Python
+__pycache__/
+*.py[cod]
+*.egg-info/
+.eggs/
+build/
+dist/
+.pytest_cache/
+.ruff_cache/
+.coverage
+htmlcov/
+
+# Virtual environments
+venv/
+.venv/
+.maenv/
+env/
+
+# Jupyter
+.ipynb_checkpoints/
+
+# Editors / OS
+.vscode/
+.idea/
+.DS_Store
+Thumbs.db

@@ -1,0 +1,4 @@
+# For development, prefer:   pip install -e ".[dev,notebook]"
+
+requests>=2.31
+python-dotenv>=1.0
