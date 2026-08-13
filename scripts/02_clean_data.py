@@ -230,20 +230,31 @@ def get_list_size(credits, key):
     return len(credits.get(key, []))
 
 
-def get_director(credits):
+def get_directors(credits):
+    """Join every crew member credited as 'Director' with '|', same
+    convention as cast/genres/production_companies. Co-directed films are
+    common (e.g. this dataset's Avengers: Endgame/Infinity War -- both
+    Russo brothers -- and Frozen/Frozen II -- Jennifer Lee & Chris Buck):
+    taking only the first Director credit would silently drop a real
+    co-director and misattribute the film to one person, with the actual
+    name picked depending on unstable API list order.
+
+    Sorted before joining for a second reason: TMDb doesn't list the same
+    co-directing pair in the same order on every film (Endgame lists
+    Anthony Russo first, Infinity War lists Joe Russo first, for the
+    exact same two people) -- without sorting, groupby('director') in the
+    KPI step would split one directing team into two different groups."""
     if not isinstance(credits, dict):
         return None
     crew_list = credits.get('crew', [])
-    for person in crew_list:
-        if person.get('job') == 'Director':
-            return person['name']
-    return None
+    directors = sorted(person['name'] for person in crew_list if person.get('job') == 'Director')
+    return "|".join(directors) if directors else None
 
 
 def add_cast_and_crew(df):
     df['cast'] = df['credits'].apply(get_cast_string)
     df['cast_size'] = df['credits'].apply(lambda c: get_list_size(c, 'cast'))
-    df['director'] = df['credits'].apply(get_director)
+    df['director'] = df['credits'].apply(get_directors)
     df['crew_size'] = df['credits'].apply(lambda c: get_list_size(c, 'crew'))
 
     return df.drop(columns=['credits'])

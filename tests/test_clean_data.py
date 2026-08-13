@@ -190,24 +190,40 @@ def test_get_list_size_missing_key_is_zero(clean_data):
     assert clean_data.get_list_size({}, 'cast') == 0
 
 
-def test_get_director_finds_crew_member_with_director_job(clean_data):
+def test_get_directors_finds_crew_member_with_director_job(clean_data):
     credits = {'crew': [{'name': 'Editor Ed', 'job': 'Editor'}, {'name': 'Dir Dan', 'job': 'Director'}]}
-    assert clean_data.get_director(credits) == 'Dir Dan'
+    assert clean_data.get_directors(credits) == 'Dir Dan'
 
 
-def test_get_director_returns_none_when_no_director_listed(clean_data):
+def test_get_directors_returns_none_when_no_director_listed(clean_data):
     credits = {'crew': [{'name': 'Editor Ed', 'job': 'Editor'}]}
-    assert clean_data.get_director(credits) is None
+    assert clean_data.get_directors(credits) is None
 
 
-def test_get_director_returns_first_listed_when_co_directed(clean_data):
-    """Known limitation, pinned rather than silently left undocumented:
-    for a co-directed film TMDb lists multiple crew members with
-    job='Director' (e.g. the real Endgame/Infinity War data has both
-    Russo brothers), and this takes only the first one in API order."""
+def test_get_directors_joins_all_co_directors_with_pipe(clean_data):
+    """Regression test for a real bug: TMDb lists multiple crew members
+    with job='Director' for a co-directed film (the actual dataset has
+    this for both Avengers: Endgame/Infinity War -- the Russo brothers --
+    and Frozen/Frozen II -- Jennifer Lee & Chris Buck). Taking only the
+    first one silently drops a real co-director and misattributes the
+    film to a single person."""
     credits = {'crew': [{'name': 'Anthony Russo', 'job': 'Director'},
                          {'name': 'Joe Russo', 'job': 'Director'}]}
-    assert clean_data.get_director(credits) == 'Anthony Russo'
+    assert clean_data.get_directors(credits) == 'Anthony Russo|Joe Russo'
+
+
+def test_get_directors_sorts_so_order_is_stable_across_films(clean_data):
+    """Second-order regression test: TMDb doesn't list the same
+    co-directing pair in the same order on every film (the real data has
+    Endgame list Anthony Russo first, Infinity War list Joe Russo first,
+    for the exact same two people). Without sorting, groupby('director')
+    downstream would split one directing team into two different groups
+    depending on which film's API order happened to come first."""
+    endgame_order = {'crew': [{'name': 'Anthony Russo', 'job': 'Director'},
+                               {'name': 'Joe Russo', 'job': 'Director'}]}
+    infinity_war_order = {'crew': [{'name': 'Joe Russo', 'job': 'Director'},
+                                    {'name': 'Anthony Russo', 'job': 'Director'}]}
+    assert clean_data.get_directors(endgame_order) == clean_data.get_directors(infinity_war_order)
 
 
 # --- credits helpers are defensive against a missing/malformed credits dict ---
@@ -224,8 +240,8 @@ def test_get_list_size_non_dict_returns_zero(clean_data):
     assert clean_data.get_list_size(None, 'cast') == 0
 
 
-def test_get_director_non_dict_returns_none(clean_data):
-    assert clean_data.get_director(None) is None
+def test_get_directors_non_dict_returns_none(clean_data):
+    assert clean_data.get_directors(None) is None
 
 
 # --- add_cast_and_crew reads from an already-embedded 'credits' column ------

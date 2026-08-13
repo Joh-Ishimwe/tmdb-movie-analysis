@@ -54,7 +54,7 @@ were rendered with Matplotlib and saved to reports/figures/.
 
 The full pipeline is reproducible end to end via:
     python scripts/run_pipeline.py
-and is covered by an automated test suite (43 tests, see tests/) that
+and is covered by an automated test suite (50 tests, see tests/) that
 exercises the cleaning, KPI, and fetch logic without hitting the real
 API.
 
@@ -121,21 +121,38 @@ Most Successful Movie Franchises (by total revenue)
 5. Frozen Collection -- 2 movies, $2,727.9M, 7.238 average rating.
 
 Most Successful Directors (by total revenue)
+Co-directed films are grouped under their combined credit (e.g.
+"Anthony Russo|Joe Russo"), not split across two individual entries --
+see the Data Quality Notes below.
 1. James Cameron -- 2 movies (Avatar, Titanic), $5,187.9M total revenue,
    7.755 average rating.
-2. Joss Whedon -- 2 movies, $2,924.2M, 7.671 average rating.
-3. Anthony Russo -- 1 movie (Avengers: Endgame), $2,799.4M, 8.239
-   average rating -- the highest rating among these top 5 directors by
-   revenue. Across all 15 directors in the dataset, Joe Russo (Avengers:
-   Infinity War, 8.240) edges it out by a hair, and David Yates (Harry
-   Potter and the Deathly Hallows: Part 2, 8.080) is close behind.
-4. Jennifer Lee -- 2 movies, $2,727.9M, 7.238 average rating.
+2. Anthony Russo|Joe Russo -- 2 movies (Avengers: Endgame, Avengers:
+   Infinity War), $4,851.9M total revenue, 8.220 average rating -- the
+   highest average rating of any director (solo or team) in the
+   dataset.
+3. Joss Whedon -- 2 movies, $2,924.2M, 7.671 average rating.
+4. Chris Buck|Jennifer Lee -- 2 movies (Frozen, Frozen II), $2,727.9M,
+   7.238 average rating.
 5. J.J. Abrams -- 1 movie, $2,068.2M, 7.245 average rating.
 
 
 4. DATA QUALITY NOTES
 ------------------------
 
+- director (co-directed films): TMDb credits list every crew member
+  with job='Director' -- two, for a co-directed film. Two pairs in this
+  dataset are genuinely co-directed: Avengers: Endgame/Infinity War
+  (Anthony Russo & Joe Russo) and Frozen/Frozen II (Chris Buck &
+  Jennifer Lee). Taking only the first Director credit would silently
+  drop the second co-director and misattribute the film to one person
+  -- worse, TMDb doesn't list the same pair in the same order on every
+  film (Endgame lists Anthony first, Infinity War lists Joe first, for
+  the same two people), so naively taking "the first name" would have
+  split one directing team into two different individuals depending on
+  API list order. Fixed by joining every director credit with '|' (same
+  convention as cast/genres) and sorting the names first so the same
+  pair always canonicalizes to the same combined credit regardless of
+  API order.
 - spoken_languages: TMDb has no native-script name for some languages
   (Xhosa, spoken in Avengers: Endgame, Avengers: Infinity War, and Black
   Panther) -- only an English name. The cleaning step falls back to the
@@ -175,13 +192,15 @@ Most Successful Directors (by total revenue)
 
 Within this dataset, the Marvel/Avengers franchise is the strongest
 performer by nearly every measure: it has the most total revenue by
-franchise, its directors (the Russo brothers, on Endgame and Infinity
-War) hold the two highest average ratings of any director in the
-dataset, and its movies dominate the votes and popularity rankings.
-Avatar and Titanic (both James Cameron) combine for the single highest
-director-level revenue total, driven almost entirely by exceptional ROI
-rather than budget size -- both rank in the top 3 for ROI despite
-mid-range budgets. Franchise films in general command bigger budgets
-and more popularity than standalone films in this set, but standalone
-films showed a better median ROI, though that finding rests on only 2
-data points and should not be generalized.
+franchise, its directing team (the Russo brothers, on Endgame and
+Infinity War together) holds the highest average rating of any
+director in the dataset, and its movies dominate the votes and
+popularity rankings. Avatar and Titanic (both James Cameron) combine
+for the single highest director-level revenue total, driven almost
+entirely by exceptional ROI rather than budget size -- both rank in the
+top 3 for ROI despite mid-range budgets. The Russo brothers place
+second on revenue, ahead of every solo director in the dataset.
+Franchise films in general command bigger budgets and more popularity
+than standalone films in this set, but standalone films showed a better
+median ROI, though that finding rests on only 2 data points and should
+not be generalized.
