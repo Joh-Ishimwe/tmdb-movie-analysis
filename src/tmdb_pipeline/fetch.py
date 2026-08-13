@@ -114,10 +114,15 @@ def download_movies(movie_ids, api_key, movie_url, existing_movies=None):
             logger.warning("Could not connect to TMDB while fetching ID %s.", movie_id)
 
         except requests.exceptions.HTTPError as error:
-            logger.warning("HTTP error for ID %s: %s", movie_id, error)
+            # Not str(error) -- it embeds the full request URL, api_key included.
+            status = error.response.status_code if error.response is not None else None
+            if status == 404:
+                logger.warning("Invalid movie ID: %s (not found on TMDB).", movie_id)
+            else:
+                logger.warning("HTTP error %s for ID %s.", status, movie_id)
 
         except requests.exceptions.RequestException as error:
-            logger.warning("Request failed for ID %s: %s", movie_id, error)
+            logger.warning("Request failed for ID %s: %s", movie_id, type(error).__name__)
 
     if attempted and not movies and not existing_movies:
         raise RuntimeError(
