@@ -42,6 +42,20 @@ def dataset_exists_and_is_valid(output_file):
         return False
 
 
+def load_existing_movies(output_file):
+    """Previously saved movies, or [] if there's nothing valid saved yet."""
+    if not dataset_exists_and_is_valid(output_file):
+        return []
+
+    with open(output_file, "r", encoding="utf-8") as file:
+        return json.load(file)
+
+
+def movie_id_exists(movie_id, existing_movies):
+    """True if movie_id is already present among existing_movies."""
+    return any(movie.get('id') == movie_id for movie in existing_movies)
+
+
 def fetch_movie(movie_id, api_key, movie_url):
     """One movie's details, with cast/crew bundled in via
     append_to_response=credits -- half the API calls vs. a separate
@@ -53,14 +67,23 @@ def fetch_movie(movie_id, api_key, movie_url):
     )
 
 
-def download_movies(movie_ids, api_key, movie_url):
-    """Fetch every ID, skipping individual failures rather than aborting
-    the batch. Raises RuntimeError only if nothing downloaded at all."""
+def download_movies(movie_ids, api_key, movie_url, existing_movies=None):
+    """Fetch every ID not already in existing_movies (e.g. after a
+    MOVIE_IDS change), skipping individual failures rather than aborting
+    the batch. Raises RuntimeError only if IDs needed fetching and none
+    of them succeeded."""
+    existing_movies = existing_movies or []
     logger.info("Downloading movie data from TMDB...")
 
     movies = []
+    attempted = 0
 
     for movie_id in movie_ids:
+        if movie_id_exists(movie_id, existing_movies):
+            logger.info("Movie ID %s already downloaded, skipping.", movie_id)
+            continue
+
+        attempted += 1
         logger.info("Fetching movie ID: %s", movie_id)
 
         try:
@@ -94,11 +117,14 @@ def download_movies(movie_ids, api_key, movie_url):
         except requests.exceptions.RequestException as error:
             logger.warning("Request failed for ID %s: %s", movie_id, error)
 
-    if not movies:
+    if attempted and not movies:
         raise RuntimeError(
             "No movie data was downloaded. The dataset will NOT be saved."
         )
 
-    logger.info("Successfully downloaded %d movies.", len(movies))
+    if movies:
+        logger.info("Successfully downloaded %d new movie(s).", len(movies))
+    else:
+        logger.info("No new movies to download.")
 
     return movies
