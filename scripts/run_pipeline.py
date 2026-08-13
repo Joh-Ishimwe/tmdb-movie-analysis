@@ -42,12 +42,6 @@ def _load_script(filename):
 
 
 def run_pipeline():
-    # The numbered scripts do `from tmdb_api import ...`, resolved because
-    # Python auto-adds a script's own directory to sys.path when it's run
-    # directly. Recreate that here so the same import works when this file
-    # loads them instead.
-    sys.path.insert(0, str(SCRIPTS_DIR))
-
     for label, filename in STAGES:
         print(f"\n{'=' * 60}")
         print(label)

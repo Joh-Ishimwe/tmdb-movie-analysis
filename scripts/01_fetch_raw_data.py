@@ -1,174 +1,49 @@
+"""
+Step 1: Fetch Movie Data from API.
+
+Thin CLI wrapper around tmdb_pipeline.fetch: handles file I/O (checking
+for a cached dataset, saving the result) and credential loading. All the
+actual fetch/validate logic lives in tmdb_pipeline/fetch.py, so it's
+directly importable and testable without going through this script.
+"""
+
 import json
+import sys
 from pathlib import Path
 
-import requests
+from tmdb_pipeline.api import load_credentials
+from tmdb_pipeline.fetch import MOVIE_IDS, dataset_exists_and_is_valid, download_movies
 
-from tmdb_api import load_credentials, fetch_json
+# Windows terminals default to cp1252, which can't print some movie titles/
+# language names (accented characters, etc.). Force UTF-8 so this script
+# doesn't crash on print() the way Jupyter (UTF-8 by default) never does.
+if hasattr(sys.stdout, "reconfigure"):
+    sys.stdout.reconfigure(encoding="utf-8")
 
-
-# 1. Load environment variables
-
-API_KEY, MOVIE_URL = load_credentials()
-
-
-# 2. Movie IDs required by the project
-
-MOVIE_IDS = [
-    0, 299534, 19995, 140607, 299536, 597, 135397,
-    420818, 24428, 168259, 99861, 284054, 12445,
-    181808, 330457, 351286, 109445, 321612, 260513
-]
-
-
-# 3. File where the raw dataset will be stored
 
 OUTPUT_DIR = Path("data/raw")
 OUTPUT_FILE = OUTPUT_DIR / "movies.json"
 
 
+def save_movies(movies, output_file):
+    output_file.parent.mkdir(parents=True, exist_ok=True)
 
-# 4. Check whether a valid dataset already exists
+    with open(output_file, "w", encoding="utf-8") as file:
+        json.dump(movies, file, indent=2, ensure_ascii=False)
 
-def dataset_exists_and_is_valid():
-    """
-    Return True if movies.json exists and contains
-    a non-empty list of movie records.
-    """
-
-    if not OUTPUT_FILE.exists():
-        return False
-
-    try:
-        with open(OUTPUT_FILE, "r", encoding="utf-8") as file:
-            data = json.load(file)
-
-        if not isinstance(data, list):
-            return False
-
-        if len(data) == 0:
-            return False
-
-        return True
-
-    except (json.JSONDecodeError, OSError):
-        return False
-
-
-# 5. Fetch one movie from TMDB
-# append_to_response=credits bundles cast/crew into this same call instead
-# of a separate /movie/{id}/credits request per movie afterward -- half
-# the API calls for the same data (was ~2N calls, now ~N).
-
-def fetch_movie(movie_id):
-    return fetch_json(
-        f"{MOVIE_URL}{movie_id}",
-        API_KEY,
-        extra_params={"append_to_response": "credits"},
-    )
-
-
-
-# 6. Fetch all required movies
-
-def download_movies():
-
-    print("Downloading movie data from TMDB...")
-
-    movies = []
-
-    for movie_id in MOVIE_IDS:
-
-        print(f"Fetching movie ID: {movie_id}")
-
-        try:
-            movie = fetch_movie(movie_id)
-
-            # Make sure the response actually contains data
-            if movie and isinstance(movie, dict):
-
-                # TMDB error responses can contain an "status_code"
-                if "status_code" in movie:
-                    print(
-                        f"  Skipping ID {movie_id}: "
-                        f"{movie.get('status_message', 'API error')}"
-                    )
-                    continue
-
-                movies.append(movie)
-
-            else:
-                print(f"  Skipping ID {movie_id}: empty response.")
-
-        except requests.exceptions.Timeout:
-            print(f"  Timeout while fetching ID {movie_id}.")
-
-        except requests.exceptions.ConnectionError:
-            print(
-                f"  Could not connect to TMDB while fetching "
-                f"ID {movie_id}."
-            )
-
-        except requests.exceptions.HTTPError as error:
-            print(
-                f"  HTTP error for ID {movie_id}: "
-                f"{error}"
-            )
-
-        except requests.exceptions.RequestException as error:
-            print(
-                f"  Request failed for ID {movie_id}: "
-                f"{error}"
-            )
-
-    # Make sure we didn't download an empty dataset
-
-    if not movies:
-        raise RuntimeError(
-            "No movie data was downloaded. "
-            "The dataset will NOT be saved."
-        )
-
-    
-    # Create the directory if it doesn't exist
-
-    OUTPUT_DIR.mkdir(
-        parents=True,
-        exist_ok=True
-    )
-
-    # Save the raw dataset
-
-    with open(OUTPUT_FILE, "w", encoding="utf-8") as file:
-        json.dump(
-            movies,
-            file,
-            indent=2,
-            ensure_ascii=False
-        )
-
-    print()
-    print(f"Successfully downloaded {len(movies)} movies.")
-    print(f"Dataset saved to: {OUTPUT_FILE}")
-
-
-# 7. Main program
+    print(f"Dataset saved to: {output_file}")
 
 
 def main():
-
-    # If a valid dataset already exists,
-    # don't call the API again.
-    if dataset_exists_and_is_valid():
-
-        print(
-            f"Dataset already exists at: {OUTPUT_FILE}"
-        )
+    # If a valid dataset already exists, don't call the API again.
+    if dataset_exists_and_is_valid(OUTPUT_FILE):
+        print(f"Dataset already exists at: {OUTPUT_FILE}")
         print("Skipping API download.")
-
         return
 
-    # Otherwise download it
-    download_movies()
+    api_key, movie_url = load_credentials()
+    movies = download_movies(MOVIE_IDS, api_key, movie_url)
+    save_movies(movies, OUTPUT_FILE)
 
 
 if __name__ == "__main__":
