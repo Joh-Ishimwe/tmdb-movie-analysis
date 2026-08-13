@@ -2,16 +2,13 @@
 Step 2: Data Cleaning and Preprocessing.
 
 Pure DataFrame transforms -- no file paths, no network calls. Takes the
-raw DataFrame (as loaded from 01_fetch_raw_data.py's output, already
-including cast/crew via append_to_response=credits) and returns the
-cleaned one. scripts/02_clean_data.py handles reading/writing files;
-this module is what's actually reusable and testable.
+raw DataFrame (already including cast/crew, from fetch.py) and returns
+the cleaned one. scripts/02_clean_data.py handles the file I/O.
 """
 
 import numpy as np
 import pandas as pd
 
-# Reorder columns & reset index (Step 2's final shape)
 FINAL_COLUMNS = [
     'id', 'title', 'tagline', 'release_date', 'genres', 'belongs_to_collection',
     'original_language', 'budget_musd', 'revenue_musd', 'production_companies',
@@ -20,14 +17,11 @@ FINAL_COLUMNS = [
 ]
 
 
-# Drop irrelevant / undocumented columns
-
 def drop_irrelevant_columns(df):
     columns_to_drop = ['adult', 'imdb_id', 'original_title', 'video', 'homepage']
     df = df.drop(columns=columns_to_drop)
 
-    # 'softcore' is an undocumented boolean flag -- not in any official
-    # TMDb docs, and always False in this dataset. Irrelevant, drop it too.
+    # 'softcore' isn't in any official TMDb docs and is always False here.
     if 'softcore' in df.columns:
         df = df.drop(columns=['softcore'])
 
@@ -35,16 +29,13 @@ def drop_irrelevant_columns(df):
     return df
 
 
-# Extract JSON-nested columns into clean, readable strings
-
 def extract_names(item_list):
-    """Join the 'name' field of each dict in a list of dicts with '|'.
-    Reused for genres, production_companies, production_countries, and
-    spoken_languages -- they're all shaped the same way.
+    """Join each dict's 'name' with '|'. Used for genres,
+    production_companies, production_countries, spoken_languages.
 
-    Some TMDb languages (e.g. Xhosa) have no native-script 'name' -- only
-    'english_name'. Falling back keeps the language instead of silently
-    dropping it or leaving a stray '|' from an empty string."""
+    Falls back to 'english_name' when 'name' is empty (e.g. Xhosa has no
+    native-script name in TMDb) instead of dropping it or leaving a
+    stray '|'."""
     if isinstance(item_list, list):
         return "|".join([item.get('name') or item.get('english_name') for item in item_list])
     return None
@@ -74,8 +65,6 @@ def extract_json_columns(df):
     return df
 
 
-# Inspect extracted columns for anomalies
-
 def inspect_extracted_columns(df):
     extracted_cols = [
         'genres', 'belongs_to_collection', 'production_countries',
@@ -89,10 +78,8 @@ def inspect_extracted_columns(df):
         print()
 
 
-# Convert data types
-# errors='coerce' converts unparseable values to NaN/NaT instead of crashing.
-
 def convert_data_types(df):
+    # errors='coerce' turns unparseable values into NaN/NaT instead of raising.
     df['budget'] = pd.to_numeric(df['budget'], errors='coerce')
     df['id'] = pd.to_numeric(df['id'], errors='coerce')
     df['popularity'] = pd.to_numeric(df['popularity'], errors='coerce')
@@ -103,11 +90,8 @@ def convert_data_types(df):
     return df
 
 
-# Replace unrealistic zero values & convert to million USD
-# A budget/revenue/runtime of exactly 0 is not physically plausible for a
-# real released movie -- it signals missing data, not a true value of zero.
-
 def fix_budget_revenue_runtime(df):
+    # 0 isn't a plausible real value here -- it means missing data.
     df['budget'] = df['budget'].replace(0, np.nan)
     df['revenue'] = df['revenue'].replace(0, np.nan)
     df['runtime'] = df['runtime'].replace(0, np.nan)
@@ -122,18 +106,14 @@ def fix_budget_revenue_runtime(df):
     return df
 
 
-# Treat vote_average as missing when vote_count is 0
-# If vote_count is 0, vote_average has no real data behind it.
-
 def fix_zero_vote_counts(df):
+    # vote_count == 0 means vote_average has no real data behind it.
     zero_votes = df[df['vote_count'] == 0]
     print(f"Movies with 0 vote_count: {len(zero_votes)}")
 
     df.loc[df['vote_count'] == 0, 'vote_average'] = np.nan
     return df
 
-
-# Replace placeholder text in overview / tagline
 
 def fix_placeholder_text(df):
     print(df['overview'].value_counts().head(10))
@@ -144,13 +124,9 @@ def fix_placeholder_text(df):
     return df
 
 
-# Remove duplicates and rows with unknown id / title
-
 def drop_duplicates_and_unknowns(df):
-    # 'credits' holds nested dicts, which pandas can't hash to compare --
-    # exclude it from the duplicate check (it's dropped later anyway, in
-    # add_cast_and_crew). id/title alone are enough to define a duplicate
-    # movie record.
+    # Exclude 'credits' (nested dicts aren't hashable/comparable); it's
+    # dropped later anyway in add_cast_and_crew.
     is_duplicate = df.drop(columns='credits', errors='ignore').duplicated()
 
     print("Duplicate rows:", is_duplicate.sum())
@@ -162,16 +138,12 @@ def drop_duplicates_and_unknowns(df):
     return df
 
 
-# Keep only rows with at least 10 non-NaN columns
-
 def drop_sparse_rows(df, min_non_null=10):
     non_null_counts = df.notna().sum(axis=1)
     df = df[non_null_counts >= min_non_null]
     print(f"Rows remaining: {len(df)}")
     return df
 
-
-# Filter to 'Released' movies only, then drop status
 
 def filter_released(df):
     print(df['status'].value_counts())
@@ -184,11 +156,8 @@ def filter_released(df):
     return df
 
 
-# Extract cast & crew
-# cast, cast_size, director, and crew_size aren't in the base /movie/{id}
-# response, but fetch.py requests them with append_to_response=credits,
-# so they arrive bundled under df['credits'] -- no separate
-# /movie/{id}/credits call needed per movie here.
+# cast/director/crew come from df['credits'], bundled in by fetch.py via
+# append_to_response=credits -- no separate call needed here.
 
 def get_cast_string(credits, top_n=10):
     if not isinstance(credits, dict):
@@ -206,19 +175,9 @@ def get_list_size(credits, key):
 
 
 def get_directors(credits):
-    """Join every crew member credited as 'Director' with '|', same
-    convention as cast/genres/production_companies. Co-directed films are
-    common (e.g. this dataset's Avengers: Endgame/Infinity War -- both
-    Russo brothers -- and Frozen/Frozen II -- Jennifer Lee & Chris Buck):
-    taking only the first Director credit would silently drop a real
-    co-director and misattribute the film to one person, with the actual
-    name picked depending on unstable API list order.
-
-    Sorted before joining for a second reason: TMDb doesn't list the same
-    co-directing pair in the same order on every film (Endgame lists
-    Anthony Russo first, Infinity War lists Joe Russo first, for the
-    exact same two people) -- without sorting, groupby('director') in the
-    KPI step would split one directing team into two different groups."""
+    """Join every 'Director' crew credit with '|' (co-directed films have
+    more than one). Sorted first so the same pair always joins the same
+    way -- TMDb doesn't list them in a consistent order across films."""
     if not isinstance(credits, dict):
         return None
     crew_list = credits.get('crew', [])

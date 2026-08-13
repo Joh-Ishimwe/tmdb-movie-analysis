@@ -12,24 +12,17 @@ from urllib3.util.retry import Retry
 
 
 def _build_session(total=3, backoff_factor=1):
-    """A requests Session with automatic retry + exponential backoff on
-    transient failures -- connection errors, TMDb rate-limiting (429), and
-    server-side errors (5xx). A single flaky response no longer fails the
-    whole fetch run. 4xx errors other than 429 (e.g. 404 for a bad movie
-    ID) are NOT retried -- retrying "not found" just wastes calls.
+    """Session with retry + exponential backoff on connection errors,
+    429, and 5xx. Other 4xx (e.g. 404) aren't retried -- pointless.
 
-    total/backoff_factor are parameters (rather than hardcoded) so tests
-    can build a session with negligible backoff and still exercise the
-    real Retry/HTTPAdapter machinery, instead of actually waiting seconds
-    between retry attempts."""
+    total/backoff_factor are parameters so tests can use a fast session
+    without actually waiting between retries."""
     retry = Retry(
         total=total,
         backoff_factor=backoff_factor,  # default sleeps ~1s, 2s, 4s
         status_forcelist=[429, 500, 502, 503, 504],
         allowed_methods=["GET"],
-        raise_on_status=False,  # let response.raise_for_status() below
-                                 # be the single place that turns a final
-                                 # failure into an exception
+        raise_on_status=False,  # fetch_json's raise_for_status() handles it
     )
 
     adapter = HTTPAdapter(max_retries=retry)

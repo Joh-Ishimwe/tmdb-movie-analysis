@@ -1,17 +1,14 @@
 """
 Step 4: Data Visualization.
 
-Thin CLI wrapper around tmdb_pipeline.visualization: handles file I/O.
-All the actual plotting logic lives in tmdb_pipeline/visualization.py,
-so it's directly importable and testable (e.g. against a tmp_path)
-without going through this script.
+Thin wrapper: loads KPI data, calls tmdb_pipeline.visualization to save charts.
 """
 
-import sys
 from pathlib import Path
 
 import pandas as pd
 
+from tmdb_pipeline.cli import force_utf8_stdout, log_loaded, require_file
 from tmdb_pipeline.visualization import (
     apply_chart_style,
     plot_franchise_vs_standalone,
@@ -21,11 +18,7 @@ from tmdb_pipeline.visualization import (
     plot_yearly_revenue_trend,
 )
 
-# Windows terminals default to cp1252, which can't print some movie titles
-# (accented characters, etc.). Force UTF-8 so this script doesn't crash on
-# print() the way Jupyter (UTF-8 by default) never does.
-if hasattr(sys.stdout, "reconfigure"):
-    sys.stdout.reconfigure(encoding="utf-8")
+force_utf8_stdout()
 
 
 KPI_FILE = Path("data/processed/tmdb_movies_with_kpis.csv")
@@ -33,15 +26,13 @@ FIGURES_DIR = "reports/figures"
 
 
 def load_kpi_data():
-    if not KPI_FILE.exists():
-        raise FileNotFoundError(f"{KPI_FILE} not found. Run 03_kpis.py first.")
+    require_file(KPI_FILE, "03_kpis.py")
 
     df = pd.read_csv(KPI_FILE)
-    # release_date round-trips through CSV as plain text -- restore it to
-    # a real datetime so the yearly-trend chart can group by .dt.year.
+    # CSV round-trips release_date as text -- restore it for .dt.year below.
     df['release_date'] = pd.to_datetime(df['release_date'], errors='coerce')
 
-    print(f"Loaded {len(df)} movies from {KPI_FILE}")
+    log_loaded(len(df), KPI_FILE)
     return df
 
 

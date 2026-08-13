@@ -1,7 +1,4 @@
-"""
-Thin CLI wrappers around the tmdb_pipeline package -- one per pipeline
-stage (01-04), plus run_pipeline.py to run all four in order. Making
-this a real package (rather than a loose folder of scripts) is what lets
-the installed `tmdb-pipeline` command (see pyproject.toml's
-[project.scripts]) resolve to scripts.run_pipeline:main.
+"""Thin CLI wrappers around tmdb_pipeline, one per stage, plus
+run_pipeline.py. A real package so pyproject.toml's `tmdb-pipeline`
+console command can resolve to scripts.run_pipeline:main.
 """

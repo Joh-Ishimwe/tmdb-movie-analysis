@@ -44,10 +44,8 @@ def test_extract_names_empty_list_returns_empty_string():
 
 
 def test_extract_names_falls_back_to_english_name_when_native_name_missing():
-    """Regression test for the real bug found in this dataset: TMDb has no
-    native-script 'name' for some languages (e.g. Xhosa) -- only
-    'english_name'. Falling back keeps the language instead of silently
-    dropping it or leaving a stray '|' from an empty string."""
+    """Regression: some TMDb languages (e.g. Xhosa) have no native
+    'name', only 'english_name' -- used to leave a stray '|' instead."""
     items = [
         {'english_name': 'English', 'name': 'English'},
         {'english_name': 'Xhosa', 'name': ''},
@@ -220,24 +218,16 @@ def test_get_directors_returns_none_when_no_director_listed():
 
 
 def test_get_directors_joins_all_co_directors_with_pipe():
-    """Regression test for a real bug: TMDb lists multiple crew members
-    with job='Director' for a co-directed film (the actual dataset has
-    this for both Avengers: Endgame/Infinity War -- the Russo brothers --
-    and Frozen/Frozen II -- Jennifer Lee & Chris Buck). Taking only the
-    first one silently drops a real co-director and misattributes the
-    film to a single person."""
+    """Regression: co-directed films (e.g. Endgame -- both Russo
+    brothers) used to lose the second director entirely."""
     credits = {'crew': [{'name': 'Anthony Russo', 'job': 'Director'},
                          {'name': 'Joe Russo', 'job': 'Director'}]}
     assert get_directors(credits) == 'Anthony Russo|Joe Russo'
 
 
 def test_get_directors_sorts_so_order_is_stable_across_films():
-    """Second-order regression test: TMDb doesn't list the same
-    co-directing pair in the same order on every film (the real data has
-    Endgame list Anthony Russo first, Infinity War list Joe Russo first,
-    for the exact same two people). Without sorting, groupby('director')
-    downstream would split one directing team into two different groups
-    depending on which film's API order happened to come first."""
+    """Regression: TMDb lists the same co-director pair in different
+    orders per film, which used to split one team into two groups."""
     endgame_order = {'crew': [{'name': 'Anthony Russo', 'job': 'Director'},
                                {'name': 'Joe Russo', 'job': 'Director'}]}
     infinity_war_order = {'crew': [{'name': 'Joe Russo', 'job': 'Director'},
@@ -245,10 +235,7 @@ def test_get_directors_sorts_so_order_is_stable_across_films():
     assert get_directors(endgame_order) == get_directors(infinity_war_order)
 
 
-# --- credits helpers are defensive against a missing/malformed credits dict ---
-# (a row's 'credits' value should always be a dict once append_to_response=
-# credits is used, but these guard against unexpected shapes rather than
-# raising deep inside a .apply() call)
+# --- defensive against a missing/malformed credits dict ---------------------
 
 def test_get_cast_string_non_dict_returns_none():
     assert get_cast_string(None) is None

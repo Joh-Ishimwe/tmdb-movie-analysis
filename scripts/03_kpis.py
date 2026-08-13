@@ -1,17 +1,14 @@
 """
 Step 3: KPI Implementation & Analysis.
 
-Thin CLI wrapper around tmdb_pipeline.kpis: handles file I/O and prints
-the results. All the actual KPI computation lives in tmdb_pipeline/kpis.py
-as pure, printless functions -- directly importable and testable
-without going through this script.
+Thin wrapper: loads data, calls tmdb_pipeline.kpis, prints/saves results.
 """
 
-import sys
 from pathlib import Path
 
 import pandas as pd
 
+from tmdb_pipeline.cli import ensure_dir, force_utf8_stdout, log_loaded, require_file
 from tmdb_pipeline.kpis import (
     add_profit_and_roi,
     franchise_vs_standalone_performance,
@@ -22,11 +19,7 @@ from tmdb_pipeline.kpis import (
     top_movies,
 )
 
-# Windows terminals default to cp1252, which can't print some movie titles/
-# cast names (accented characters, etc.). Force UTF-8 so this script
-# doesn't crash on print() the way Jupyter (UTF-8 by default) never does.
-if hasattr(sys.stdout, "reconfigure"):
-    sys.stdout.reconfigure(encoding="utf-8")
+force_utf8_stdout()
 
 
 CLEAN_FILE = Path("data/processed/tmdb_movies_clean.csv")
@@ -35,11 +28,10 @@ KPI_FILE = PROCESSED_DIR / "tmdb_movies_with_kpis.csv"
 
 
 def load_clean_data():
-    if not CLEAN_FILE.exists():
-        raise FileNotFoundError(f"{CLEAN_FILE} not found. Run 02_clean_data.py first.")
+    require_file(CLEAN_FILE, "02_clean_data.py")
 
     df = pd.read_csv(CLEAN_FILE)
-    print(f"Loaded {len(df)} movies from {CLEAN_FILE}")
+    log_loaded(len(df), CLEAN_FILE)
     return df
 
 
@@ -53,7 +45,6 @@ def print_best_worst_performing(df):
     print("\n--- Most Voted ---")
     print(top_movies(df, 'vote_count', n=5))
 
-    # Highest Rated & Lowest Rated (only movies with >= 10 votes, per the brief)
     rated = df[df['vote_count'] >= 10]
     print("\n--- Highest Rated (>= 10 votes) ---")
     print(top_movies(rated, 'vote_average', n=5))
@@ -77,12 +68,8 @@ def print_best_worst_performing(df):
 
 
 def print_advanced_search_queries(df):
-    # Caveat: the movies in this dataset are the specific blockbuster
-    # franchise entries chosen in the project brief. Niche queries like
-    # "Bruce Willis sci-fi" or "Tarantino/Uma Thurman" were never fetched,
-    # so both searches are expected to return zero rows on this dataset --
-    # that's a property of which movie IDs the brief specifies, not a bug
-    # in the filtering logic.
+    # Both searches return 0 rows on this dataset -- it's only the 18
+    # blockbusters from the brief, not the full TMDb catalog.
     search_1 = search_scifi_action_with_actor(df, 'Bruce Willis')
     print("\n--- Search 1: Sci-Fi Action starring Bruce Willis ---")
     print(f"Matches: {len(search_1)}")
@@ -110,12 +97,11 @@ def main():
     print("\n--- Most Successful Directors ---")
     print(most_successful_directors(df))
 
-    # franchise_vs_standalone_performance() computes is_franchise on its
-    # own copy (pure function, no side effects on the caller's df) -- add
-    # it here explicitly so the saved CSV still carries it for Step 4.
+    # Add for the saved CSV -- franchise_vs_standalone_performance() only
+    # computes this on its own copy.
     df['is_franchise'] = df['belongs_to_collection'].notna()
 
-    PROCESSED_DIR.mkdir(parents=True, exist_ok=True)
+    ensure_dir(PROCESSED_DIR)
     df.to_csv(KPI_FILE, index=False)
     print(f"\nSaved {len(df)} rows to {KPI_FILE}")
 

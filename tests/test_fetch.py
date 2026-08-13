@@ -1,9 +1,8 @@
 """Tests for tmdb_pipeline.fetch -- dataset validation logic.
 
-No network access here: dataset_exists_and_is_valid() takes the file
-path directly, so these just point it at tmp_path fixtures. Network
-calls (fetch_movie/download_movies) are exercised via tmdb_pipeline.api,
-mocked in test_api.py.
+No network access needed: dataset_exists_and_is_valid() takes the path
+directly, so these just point it at tmp_path. Network calls are tested
+in test_api.py.
 """
 
 import json

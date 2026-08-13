@@ -1,9 +1,7 @@
 """
 Step 1: Fetch Movie Data from API.
 
-Pure fetch/validate logic -- no hardcoded file paths, so it's usable from
-scripts/01_fetch_raw_data.py, tests, or anywhere else without touching
-disk unless explicitly asked to.
+No hardcoded file paths -- usable from scripts, tests, or anywhere else.
 """
 
 import json
@@ -21,10 +19,7 @@ MOVIE_IDS = [
 
 
 def dataset_exists_and_is_valid(output_file):
-    """
-    Return True if output_file exists and contains a non-empty list of
-    movie records.
-    """
+    """True if output_file exists and holds a non-empty list of movies."""
     if not output_file.exists():
         return False
 
@@ -45,9 +40,9 @@ def dataset_exists_and_is_valid(output_file):
 
 
 def fetch_movie(movie_id, api_key, movie_url):
-    """Fetch one movie's details, with cast/crew bundled into the same
-    call via append_to_response=credits -- half the API calls compared
-    to a separate /movie/{id}/credits request per movie afterward."""
+    """One movie's details, with cast/crew bundled in via
+    append_to_response=credits -- half the API calls vs. a separate
+    /credits request per movie."""
     return fetch_json(
         f"{movie_url}{movie_id}",
         api_key,
@@ -56,10 +51,8 @@ def fetch_movie(movie_id, api_key, movie_url):
 
 
 def download_movies(movie_ids, api_key, movie_url, verbose=True):
-    """Fetch every ID in movie_ids, skipping (not raising on) individual
-    failures -- a bad ID or one flaky request shouldn't lose the whole
-    batch. Raises RuntimeError only if nothing could be downloaded at
-    all. Returns the list of successfully fetched movie dicts."""
+    """Fetch every ID, skipping individual failures rather than aborting
+    the batch. Raises RuntimeError only if nothing downloaded at all."""
     if verbose:
         print("Downloading movie data from TMDB...")
 

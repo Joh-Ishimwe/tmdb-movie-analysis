@@ -1,11 +1,9 @@
 """
 Step 4: Data Visualization.
 
-One fixed accent color per series/entity throughout (never re-cycled per
-category), so the same color always means the same thing across charts.
-Every plot_* function takes figures_dir explicitly rather than reading a
-module-level constant -- makes these testable against a tmp_path without
-ever touching the real reports/ directory.
+One fixed accent color per series throughout, so color always means the
+same thing across charts. figures_dir is a parameter, not a module
+constant, so these are testable against a tmp_path.
 """
 
 import os
@@ -35,11 +33,8 @@ def apply_chart_style(figures_dir):
     })
 
 
-# Revenue vs. Budget
-# Only the top 5 movies by revenue are directly labeled -- labeling all of
-# them would clutter the plot given how tightly some points cluster.
-
 def plot_revenue_vs_budget(df, figures_dir):
+    # Only the top 5 by revenue are labeled -- labeling all 18 would clutter it.
     fig, ax = plt.subplots(figsize=(8, 6))
     ax.scatter(df['budget_musd'], df['revenue_musd'], s=80, color=ACCENT, alpha=0.85,
                edgecolor="white", linewidth=0.8, zorder=3)
@@ -59,14 +54,8 @@ def plot_revenue_vs_budget(df, figures_dir):
     return path
 
 
-# ROI Distribution by Genre
-# Each movie usually has multiple genres (genres is '|'-separated), so a
-# movie's ROI counts toward every genre it belongs to -- done here with
-# .explode(). Caveat: with a small dataset spread across many genres, most
-# genres have just a handful of data points, so these boxes are
-# illustrative rather than statistically robust.
-
 def plot_roi_by_genre(df, figures_dir):
+    # A multi-genre movie's ROI counts toward each of its genres (explode).
     genre_roi = df[['title', 'genres', 'roi']].dropna(subset=['genres', 'roi']).copy()
     genre_roi['genres'] = genre_roi['genres'].str.split('|')
     genre_roi = genre_roi.explode('genres').rename(columns={'genres': 'genre'})
@@ -92,8 +81,6 @@ def plot_roi_by_genre(df, figures_dir):
     return path
 
 
-# Popularity vs. Rating
-
 def plot_popularity_vs_rating(df, figures_dir):
     fig, ax = plt.subplots(figsize=(8, 6))
     ax.scatter(df['vote_average'], df['popularity'], s=80, color=ACCENT, alpha=0.85,
@@ -109,13 +96,8 @@ def plot_popularity_vs_rating(df, figures_dir):
     return path
 
 
-# Yearly Trends in Box Office Performance
-# Year is derived on the fly from release_date rather than a separate
-# stored column. Caveat: a small, hand-picked set of blockbusters is not a
-# representative sample of each year's full box office -- so this chart
-# shows this dataset's revenue by year, not the industry's.
-
 def plot_yearly_revenue_trend(df, figures_dir):
+    # This dataset's revenue by year, not an industry-wide trend.
     yearly_revenue = (
         df.dropna(subset=['release_date'])
           .groupby(df['release_date'].dt.year)['revenue_musd']
@@ -141,16 +123,9 @@ def plot_yearly_revenue_trend(df, figures_dir):
     return path
 
 
-# Franchise vs. Standalone: Comparison Across Metrics
-# The five metrics live on very different scales (revenue in hundreds of
-# millions, rating out of 10), so instead of one bar chart with mismatched
-# axes, this uses small multiples -- one subplot per metric, sharing a
-# single color per group (Franchise / Standalone) across all five.
-# Reuses kpis.franchise_vs_standalone_performance() rather than
-# recomputing the same aggregation -- that duplication used to exist only
-# because 03_kpis.py's numbered filename couldn't be imported.
-
 def plot_franchise_vs_standalone(df, figures_dir):
+    # Small multiples (one subplot per metric) since revenue/ROI/rating
+    # live on very different scales -- one bar chart wouldn't work.
     franchise_vs_standalone = franchise_vs_standalone_performance(df)
 
     metrics = [

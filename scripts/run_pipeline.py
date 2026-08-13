@@ -1,17 +1,10 @@
 """
-Run the full TMDb movie analysis pipeline end to end:
-
-  1. Fetch raw movie data from the TMDb API      (01_fetch_raw_data.py)
-  2. Clean and preprocess it                      (02_clean_data.py)
-  3. Compute KPIs                                 (03_kpis.py)
-  4. Render visualizations                        (04_visualizations.py)
+Run the full pipeline end to end: fetch -> clean -> KPIs -> visualize.
 
 Each stage writes the file the next one reads, so they run in this fixed
-order and stop at the first failure rather than continuing on stale or
-missing data.
+order and stop at the first failure.
 
-Usage (from the project root):
-    python scripts/run_pipeline.py
+Usage (from the project root): python scripts/run_pipeline.py
 """
 
 import importlib.util
