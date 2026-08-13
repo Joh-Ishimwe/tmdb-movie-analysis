@@ -106,6 +106,49 @@ def test_fetch_json_raises_on_http_error(tmdb_api):
     with pytest.raises(requests.exceptions.HTTPError):
         tmdb_api.fetch_json('https://api.example.com/movie/0', 'fake-key')
 
+    # 404 ("not found") isn't in the retry list -- retrying it would just
+    # waste calls, so exactly one request should have been made.
+    assert len(responses.calls) == 1
+
+
+# --- retry/backoff on transient failures ---------------------------------
+
+def _fast_retry_session(tmdb_api):
+    """A session with the same retry policy as production but negligible
+    backoff, so these tests exercise the real Retry/HTTPAdapter machinery
+    without actually waiting seconds between attempts."""
+    return tmdb_api._build_session(total=3, backoff_factor=0.01)
+
+
+@responses.activate
+def test_fetch_json_retries_transient_server_errors_then_succeeds(tmdb_api, monkeypatch):
+    monkeypatch.setattr(tmdb_api, '_session', _fast_retry_session(tmdb_api))
+
+    url = 'https://api.example.com/movie/597'
+    responses.add(responses.GET, url, status=503)   # transient failure #1
+    responses.add(responses.GET, url, status=503)   # transient failure #2
+    responses.add(responses.GET, url, json={'id': 597}, status=200)  # succeeds
+
+    result = tmdb_api.fetch_json(url, 'fake-key')
+
+    assert result == {'id': 597}
+    assert len(responses.calls) == 3
+
+
+@responses.activate
+def test_fetch_json_raises_after_exhausting_retries(tmdb_api, monkeypatch):
+    monkeypatch.setattr(tmdb_api, '_session', _fast_retry_session(tmdb_api))
+
+    url = 'https://api.example.com/movie/597'
+    # total=3 -> 1 initial attempt + 3 retries = 4 attempts, all failing.
+    for _ in range(4):
+        responses.add(responses.GET, url, status=503)
+
+    with pytest.raises(requests.exceptions.HTTPError):
+        tmdb_api.fetch_json(url, 'fake-key')
+
+    assert len(responses.calls) == 4
+
 
 @responses.activate
 def test_fetch_json_merges_extra_params_into_query(tmdb_api):
