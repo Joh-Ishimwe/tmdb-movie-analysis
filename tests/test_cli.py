@@ -7,16 +7,16 @@ import pytest
 from tmdb_pipeline.cli import ensure_dir, force_utf8_stdout, log_loaded, require_file
 
 
-def test_require_file_raises_with_prior_step_in_message(tmp_path):
+def test_require_file_raises_pointing_at_the_pipeline_entry_point(tmp_path):
     missing = tmp_path / 'movies.json'
-    with pytest.raises(FileNotFoundError, match='01_fetch_raw_data.py'):
-        require_file(missing, '01_fetch_raw_data.py')
+    with pytest.raises(FileNotFoundError, match='run_pipeline.py'):
+        require_file(missing)
 
 
 def test_require_file_does_not_raise_when_present(tmp_path):
     path = tmp_path / 'movies.json'
     path.write_text('[]', encoding='utf-8')
-    require_file(path, '01_fetch_raw_data.py')  # no raise
+    require_file(path)  # no raise
 
 
 def test_log_loaded_logs_count_and_path_under_caller_logger(caplog):

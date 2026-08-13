@@ -30,7 +30,7 @@ FIGURES_DIR = "reports/figures"
 
 
 def load_kpi_data():
-    require_file(KPI_FILE, "03_kpis.py")
+    require_file(KPI_FILE)
 
     df = pd.read_csv(KPI_FILE)
     # CSV round-trips release_date as text -- restore it for .dt.year below.
@@ -61,4 +61,7 @@ def run():
 
 
 if __name__ == "__main__":
-    run()
+    raise SystemExit(
+        "This pipeline has one entry point: "
+        "run 'python scripts/run_pipeline.py' or the 'tmdb-pipeline' command."
+    )

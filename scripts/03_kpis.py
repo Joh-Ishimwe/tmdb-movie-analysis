@@ -32,7 +32,7 @@ KPI_FILE = PROCESSED_DIR / "tmdb_movies_with_kpis.csv"
 
 
 def load_clean_data():
-    require_file(CLEAN_FILE, "02_clean_data.py")
+    require_file(CLEAN_FILE)
 
     df = pd.read_csv(CLEAN_FILE)
     log_loaded(logger, len(df), CLEAN_FILE)
@@ -117,4 +117,7 @@ def run():
 
 
 if __name__ == "__main__":
-    run()
+    raise SystemExit(
+        "This pipeline has one entry point: "
+        "run 'python scripts/run_pipeline.py' or the 'tmdb-pipeline' command."
+    )

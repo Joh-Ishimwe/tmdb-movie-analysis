@@ -71,8 +71,8 @@ file-path-based tricks to load a numbered script.
 
 ## Usage
 
-**Run the full pipeline** (fetch -> clean -> KPIs -> visualize) in one
-command -- either directly:
+This pipeline has one entry point. Run it end to end (fetch -> clean ->
+KPIs -> visualize) either directly:
 ```
 python scripts/run_pipeline.py
 ```
@@ -82,14 +82,13 @@ or via the installed console command (from `pip install -e .`'s
 tmdb-pipeline
 ```
 
-**Or run any stage individually** (each is idempotent and safe to
-re-run):
-```
-python scripts/01_fetch_raw_data.py
-python scripts/02_clean_data.py
-python scripts/03_kpis.py
-python scripts/04_visualizations.py
-```
+`scripts/01_fetch_raw_data.py` through `04_visualizations.py` aren't
+meant to be run directly -- each is a stage `run_pipeline.py` calls in
+order, not a standalone script (running one directly prints an error
+telling you to use `run_pipeline.py`/`tmdb-pipeline` instead). Each
+stage is still idempotent and safe to rerun as part of the pipeline --
+`01` skips re-fetching if a valid cache exists, and `02`-`04` simply
+regenerate their output.
 
 **Or explore interactively**: open `notebook.ipynb` in Jupyter/VS Code --
 it walks through the same four steps with explanations for each decision.

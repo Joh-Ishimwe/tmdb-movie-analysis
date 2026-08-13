@@ -12,10 +12,15 @@ def force_utf8_stdout():
         sys.stdout.reconfigure(encoding="utf-8")
 
 
-def require_file(path, prior_step):
-    """Raise a clear, actionable error if path doesn't exist yet."""
+def require_file(path):
+    """Raise a clear, actionable error if path doesn't exist yet. Points
+    at the pipeline entry point, not an individual stage -- stages 01-04
+    aren't runnable on their own (see scripts/run_pipeline.py)."""
     if not path.exists():
-        raise FileNotFoundError(f"{path} not found. Run {prior_step} first.")
+        raise FileNotFoundError(
+            f"{path} not found. Run the pipeline first: "
+            f"python scripts/run_pipeline.py (or the 'tmdb-pipeline' command)."
+        )
 
 
 def log_loaded(logger, count, path):

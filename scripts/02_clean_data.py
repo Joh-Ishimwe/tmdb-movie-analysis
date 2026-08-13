@@ -17,8 +17,6 @@ from tmdb_pipeline.logging_config import setup_logging
 
 force_utf8_stdout()
 
-# Named explicitly (not via __name__) so the log always says which
-# stage is speaking, whether run standalone or via run_pipeline.py.
 logger = logging.getLogger("02_clean_data")
 
 
@@ -28,7 +26,7 @@ PROCESSED_FILE = PROCESSED_DIR / "tmdb_movies_clean.csv"
 
 
 def load_raw_data(path):
-    require_file(path, "01_fetch_raw_data.py")
+    require_file(path)
 
     with open(path, "r", encoding="utf-8") as file:
         movies_data = json.load(file)
@@ -54,4 +52,7 @@ def run():
 
 
 if __name__ == "__main__":
-    run()
+    raise SystemExit(
+        "This pipeline has one entry point: "
+        "run 'python scripts/run_pipeline.py' or the 'tmdb-pipeline' command."
+    )

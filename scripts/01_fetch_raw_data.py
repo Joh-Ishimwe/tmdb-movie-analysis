@@ -15,10 +15,10 @@ from tmdb_pipeline.logging_config import setup_logging
 
 force_utf8_stdout()
 
-# Named explicitly rather than via __name__: this script is only ever
-# run as a top-level script (directly, or exec'd by run_pipeline.py),
-# where __name__ would just be "__main__" either way and wouldn't
-# distinguish which stage is logging.
+# Named explicitly rather than via __name__: __name__ would be
+# "01_fetch_raw_data" when exec'd by run_pipeline.py (its only caller --
+# see the __main__ guard at the bottom) but naming it explicitly here
+# keeps this consistent with the other stages regardless.
 logger = logging.getLogger("01_fetch_raw_data")
 
 
@@ -53,4 +53,7 @@ def run():
 
 
 if __name__ == "__main__":
-    run()
+    raise SystemExit(
+        "This pipeline has one entry point: "
+        "run 'python scripts/run_pipeline.py' or the 'tmdb-pipeline' command."
+    )
