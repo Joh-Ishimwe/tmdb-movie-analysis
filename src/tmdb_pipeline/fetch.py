@@ -70,8 +70,10 @@ def fetch_movie(movie_id, api_key, movie_url):
 def download_movies(movie_ids, api_key, movie_url, existing_movies=None):
     """Fetch every ID not already in existing_movies (e.g. after a
     MOVIE_IDS change), skipping individual failures rather than aborting
-    the batch. Raises RuntimeError only if IDs needed fetching and none
-    of them succeeded."""
+    the batch. Raises RuntimeError only if IDs needed fetching, none of
+    them succeeded, AND there's no existing dataset to fall back on --
+    a permanently-failing ID (e.g. 0) shouldn't break an otherwise-healthy,
+    already-downloaded dataset on every run."""
     existing_movies = existing_movies or []
     logger.info("Downloading movie data from TMDB...")
 
@@ -117,7 +119,7 @@ def download_movies(movie_ids, api_key, movie_url, existing_movies=None):
         except requests.exceptions.RequestException as error:
             logger.warning("Request failed for ID %s: %s", movie_id, error)
 
-    if attempted and not movies:
+    if attempted and not movies and not existing_movies:
         raise RuntimeError(
             "No movie data was downloaded. The dataset will NOT be saved."
         )

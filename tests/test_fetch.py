@@ -94,8 +94,20 @@ def test_download_movies_returns_empty_list_when_everything_already_exists():
 
 
 @responses.activate
-def test_download_movies_raises_when_missing_ids_all_fail():
+def test_download_movies_raises_when_missing_ids_all_fail_and_nothing_exists_yet():
     responses.add(responses.GET, f'{URL}1', json={'status_message': 'nope'}, status=404)
 
     with pytest.raises(RuntimeError):
         download_movies([1], 'fake-key', URL, existing_movies=[])
+
+
+@responses.activate
+def test_download_movies_does_not_raise_when_a_missing_id_fails_but_dataset_exists():
+    # A permanently-failing ID (e.g. the brief's sentinel ID 0) shouldn't
+    # break an otherwise-healthy, already-downloaded dataset on every run.
+    responses.add(responses.GET, f'{URL}0', json={'status_message': 'nope'}, status=404)
+    existing = [{'id': 1}, {'id': 2}]
+
+    result = download_movies([0, 1, 2], 'fake-key', URL, existing_movies=existing)
+
+    assert result == []
