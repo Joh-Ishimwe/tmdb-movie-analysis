@@ -8,14 +8,14 @@ and saves the result to data/processed/tmdb_movies_clean.csv so Step 3
 """
 
 import json
-import os
 import sys
 from pathlib import Path
 
 import numpy as np
 import pandas as pd
 import requests
-from dotenv import load_dotenv
+
+from tmdb_api import load_credentials, fetch_json
 
 # Windows terminals default to cp1252, which can't print some movie titles/
 # language names (accented characters, etc.). Force UTF-8 so this script
@@ -26,22 +26,7 @@ if hasattr(sys.stdout, "reconfigure"):
 
 # 1. Load environment variables
 
-load_dotenv()
-
-API_KEY = os.getenv("TMDB_API_KEY")
-MOVIE_URL = os.getenv("URL")
-
-if not API_KEY:
-    raise ValueError(
-        "TMDB_API_KEY was not found. "
-        "Make sure it exists in your .env file."
-    )
-
-if not MOVIE_URL:
-    raise ValueError(
-        "URL was not found. "
-        "Make sure it exists in your .env file."
-    )
+API_KEY, MOVIE_URL = load_credentials()
 
 
 # 2. File locations
@@ -83,13 +68,10 @@ def drop_irrelevant_columns(df):
 
 # 5. Extract JSON-nested columns into clean, readable strings
 
-def extract_genre_names(genre_list):
-    if isinstance(genre_list, list):
-        return "|".join([g['name'] for g in genre_list])
-    return None
-
-
 def extract_names(item_list):
+    """Join the 'name' field of each dict in a list of dicts with '|'.
+    Reused for genres, production_companies, production_countries, and
+    spoken_languages -- they're all shaped the same way."""
     if isinstance(item_list, list):
         return "|".join([item['name'] for item in item_list])
     return None
@@ -102,7 +84,7 @@ def extract_collection_name(collection):
 
 
 def extract_json_columns(df):
-    df['genres'] = df['genres'].apply(extract_genre_names)
+    df['genres'] = df['genres'].apply(extract_names)
     df['production_companies'] = df['production_companies'].apply(extract_names)
     df['production_countries'] = df['production_countries'].apply(extract_names)
     df['spoken_languages'] = df['spoken_languages'].apply(extract_names)
@@ -233,13 +215,10 @@ def fetch_credits(movie_ids):
 
     for mid in movie_ids:
         url = f"{MOVIE_URL}{mid}/credits"
-        params = {"api_key": API_KEY, "language": "en-US"}
-        response = requests.get(url, params=params, timeout=15)
-
-        if response.status_code == 200:
-            credits_data[mid] = response.json()
-        else:
-            print(f"Failed to fetch credits for movie_id {mid}: status {response.status_code}")
+        try:
+            credits_data[mid] = fetch_json(url, API_KEY, extra_params={"language": "en-US"})
+        except requests.exceptions.RequestException as error:
+            print(f"Failed to fetch credits for movie_id {mid}: {error}")
             failed_credit_ids.append(mid)
 
     print(f"Successfully fetched credits for {len(credits_data)} out of {len(movie_ids)} movies.")
@@ -252,8 +231,9 @@ def get_cast_string(credits, top_n=10):
     return "|".join(names) if names else None
 
 
-def get_cast_size(credits):
-    return len(credits.get('cast', []))
+def get_list_size(credits, key):
+    """Reused for both cast_size (key='cast') and crew_size (key='crew')."""
+    return len(credits.get(key, []))
 
 
 def get_director(credits):
@@ -264,17 +244,19 @@ def get_director(credits):
     return None
 
 
-def get_crew_size(credits):
-    return len(credits.get('crew', []))
+def map_credits_field(df, credits_data, extractor):
+    """Look up each row's credits (by movie id) and apply extractor to it,
+    or None if that movie's credits failed to fetch."""
+    return df['id'].map(lambda mid: extractor(credits_data[mid]) if mid in credits_data else None)
 
 
 def add_cast_and_crew(df):
     credits_data = fetch_credits(df['id'])
 
-    df['cast'] = df['id'].map(lambda mid: get_cast_string(credits_data[mid]) if mid in credits_data else None)
-    df['cast_size'] = df['id'].map(lambda mid: get_cast_size(credits_data[mid]) if mid in credits_data else None)
-    df['director'] = df['id'].map(lambda mid: get_director(credits_data[mid]) if mid in credits_data else None)
-    df['crew_size'] = df['id'].map(lambda mid: get_crew_size(credits_data[mid]) if mid in credits_data else None)
+    df['cast'] = map_credits_field(df, credits_data, get_cast_string)
+    df['cast_size'] = map_credits_field(df, credits_data, lambda c: get_list_size(c, 'cast'))
+    df['director'] = map_credits_field(df, credits_data, get_director)
+    df['crew_size'] = map_credits_field(df, credits_data, lambda c: get_list_size(c, 'crew'))
 
     return df
 
