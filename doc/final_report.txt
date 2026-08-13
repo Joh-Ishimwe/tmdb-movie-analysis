@@ -25,9 +25,9 @@ below are based on the remaining N = 18 movies.
   these silently changes the answer.
 - Visualize: 5 charts (Revenue vs. Budget, ROI by Genre, Popularity vs.
   Rating, Yearly Revenue Trend, Franchise vs. Standalone), saved to
-  reports/figures/ and bundled into reports/tmdb_report.pdf.
+  reports/figures/.
 - Code: logic lives in an installed package (src/tmdb_pipeline/), not
-  inline in scripts; 76 automated tests cover cleaning, KPIs, and fetch
+  inline in scripts; 74 automated tests cover cleaning, KPIs, and fetch
   without hitting the real API. Full run: python scripts/run_pipeline.py.
 
 3. KEY INSIGHTS
