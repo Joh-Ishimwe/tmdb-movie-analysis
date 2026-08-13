@@ -86,8 +86,8 @@ def plot_popularity_vs_rating(df, figures_dir):
     ax.scatter(df['vote_average'], df['popularity'], s=80, color=ACCENT, alpha=0.85,
                edgecolor="white", linewidth=0.8, zorder=3)
 
-    ax.set_xlabel("Average Rating (vote_average)")
-    ax.set_ylabel("Popularity")
+    ax.set_xlabel("Average Rating (out of 10)")
+    ax.set_ylabel("Popularity (TMDB popularity score)")
     ax.set_title("Popularity vs. Rating")
     fig.tight_layout()
     path = f"{figures_dir}/popularity_vs_rating.png"
@@ -132,8 +132,8 @@ def plot_franchise_vs_standalone(df, figures_dir):
         ('mean_revenue_musd', 'Mean Revenue\n(million USD)'),
         ('median_roi', 'Median ROI'),
         ('mean_budget_musd', 'Mean Budget\n(million USD)'),
-        ('mean_popularity', 'Mean Popularity'),
-        ('mean_rating', 'Mean Rating'),
+        ('mean_popularity', 'Mean Popularity\n(TMDB score)'),
+        ('mean_rating', 'Mean Rating\n(out of 10)'),
     ]
 
     categories = franchise_vs_standalone.index.tolist()
