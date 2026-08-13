@@ -70,17 +70,19 @@ def extract_json_columns(df):
 
 
 def inspect_extracted_columns(df):
+    """Full value_counts() go to DEBUG (detailed, but noisy for a routine
+    run); INFO gets one summary line with just the missing/empty counts."""
     extracted_cols = [
         'genres', 'belongs_to_collection', 'production_countries',
         'production_companies', 'spoken_languages'
     ]
 
+    missing_counts = {}
     for col in extracted_cols:
-        missing = df[col].isna().sum() + (df[col] == '').sum()
-        logger.info(
-            "--- %s --- Missing/empty: %d\n%s",
-            col, missing, df[col].value_counts().head(10),
-        )
+        missing_counts[col] = int(df[col].isna().sum() + (df[col] == '').sum())
+        logger.debug("--- %s ---\n%s", col, df[col].value_counts().head(10))
+
+    logger.info("Inspected extracted columns, missing/empty: %s", missing_counts)
 
 
 def convert_data_types(df):
@@ -122,11 +124,19 @@ def fix_zero_vote_counts(df):
 
 
 def fix_placeholder_text(df):
-    logger.info("overview value_counts:\n%s", df['overview'].value_counts().head(10))
-    logger.info("tagline value_counts:\n%s", df['tagline'].value_counts().head(10))
+    logger.debug("overview value_counts:\n%s", df['overview'].value_counts().head(10))
+    logger.debug("tagline value_counts:\n%s", df['tagline'].value_counts().head(10))
+
+    overview_placeholders = (df['overview'] == 'No Data').sum()
+    tagline_placeholders = (df['tagline'] == 'No Data').sum()
 
     df['overview'] = df['overview'].replace('No Data', np.nan)
     df['tagline'] = df['tagline'].replace('No Data', np.nan)
+
+    logger.info(
+        "Replaced placeholder text: %d overview, %d tagline",
+        overview_placeholders, tagline_placeholders,
+    )
     return df
 
 
@@ -153,12 +163,12 @@ def drop_sparse_rows(df, min_non_null=10):
 
 
 def filter_released(df):
-    logger.info("status value_counts:\n%s", df['status'].value_counts())
+    logger.debug("status value_counts:\n%s", df['status'].value_counts())
 
     df = df[df['status'] == 'Released']
     df = df.drop(columns=['status'])
 
-    logger.info("Rows remaining: %d, columns remaining: %d", len(df), df.shape[1])
+    logger.info("Filtered to 'Released': %d rows, %d columns remaining", len(df), df.shape[1])
     return df
 
 

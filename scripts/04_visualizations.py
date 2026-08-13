@@ -50,7 +50,10 @@ def run():
         logger.info("Saved %s", plot_revenue_vs_budget(df, FIGURES_DIR))
         logger.info("Saved %s", plot_roi_by_genre(df, FIGURES_DIR))
         logger.info("Saved %s", plot_popularity_vs_rating(df, FIGURES_DIR))
-        print("Correlation (rating, popularity):", df['vote_average'].corr(df['popularity']).round(3))
+        logger.info(
+            "Correlation (rating, popularity): %s",
+            df['vote_average'].corr(df['popularity']).round(3),
+        )
         logger.info("Saved %s", plot_yearly_revenue_trend(df, FIGURES_DIR))
         logger.info("Saved %s", plot_franchise_vs_standalone(df, FIGURES_DIR))
 
@@ -59,9 +62,3 @@ def run():
         logger.exception("Step 4 (visualizations) failed.")
         raise
 
-
-if __name__ == "__main__":
-    raise SystemExit(
-        "This pipeline has one entry point: "
-        "run 'python scripts/run_pipeline.py' or the 'tmdb-pipeline' command."
-    )

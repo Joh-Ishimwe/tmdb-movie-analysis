@@ -50,10 +50,3 @@ def run():
     except Exception:
         logger.exception("Step 1 (fetch) failed.")
         raise
-
-
-if __name__ == "__main__":
-    raise SystemExit(
-        "This pipeline has one entry point: "
-        "run 'python scripts/run_pipeline.py' or the 'tmdb-pipeline' command."
-    )
