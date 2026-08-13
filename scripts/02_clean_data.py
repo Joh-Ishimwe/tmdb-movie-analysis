@@ -37,7 +37,7 @@ def load_raw_data(path):
     return pd.DataFrame(movies_data)
 
 
-def main():
+def run():
     setup_logging()
 
     try:
@@ -54,4 +54,4 @@ def main():
 
 
 if __name__ == "__main__":
-    main()
+    run()

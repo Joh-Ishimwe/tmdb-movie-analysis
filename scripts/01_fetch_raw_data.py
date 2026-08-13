@@ -35,7 +35,7 @@ def save_movies(movies, output_file):
     logger.info("Dataset saved to: %s", output_file)
 
 
-def main():
+def run():
     setup_logging()
 
     if dataset_exists_and_is_valid(OUTPUT_FILE):
@@ -53,4 +53,4 @@ def main():
 
 
 if __name__ == "__main__":
-    main()
+    run()

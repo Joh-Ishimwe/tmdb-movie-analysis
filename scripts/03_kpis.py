@@ -85,7 +85,7 @@ def print_advanced_search_queries(df):
     print(search_2)
 
 
-def main():
+def run():
     setup_logging()
 
     try:
@@ -117,4 +117,4 @@ def main():
 
 
 if __name__ == "__main__":
-    main()
+    run()

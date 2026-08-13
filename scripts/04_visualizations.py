@@ -40,7 +40,7 @@ def load_kpi_data():
     return df
 
 
-def main():
+def run():
     setup_logging()
 
     try:
@@ -61,4 +61,4 @@ def main():
 
 
 if __name__ == "__main__":
-    main()
+    run()

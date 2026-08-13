@@ -49,13 +49,13 @@ def run_pipeline():
             logger.info("=" * 60)
 
             module = _load_script(filename)
-            module.main()
+            module.run()
 
         logger.info("=" * 60)
         logger.info("Pipeline complete.")
         logger.info("=" * 60)
     except Exception:
-        # Each stage's own main() already logged the full traceback under
+        # Each stage's own run() already logged the full traceback under
         # its own name; this adds the one thing it couldn't know itself --
         # which stage was running when the pipeline stopped.
         logger.error("Pipeline stopped during: %s", current_stage)
