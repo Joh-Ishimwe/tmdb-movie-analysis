@@ -2,21 +2,13 @@ import json
 from pathlib import Path
 
 import requests
-from dotenv import load_dotenv
-import os
+
+from tmdb_api import load_credentials, fetch_json
 
 
 # 1. Load environment variables
 
-load_dotenv()
-
-API_KEY = os.getenv("TMDB_API_KEY")
-
-if not API_KEY:
-    raise ValueError(
-        "TMDB_API_KEY was not found. "
-        "Make sure it exists in your .env file."
-    )
+API_KEY, MOVIE_URL = load_credentials()
 
 
 # 2. Movie IDs required by the project
@@ -65,22 +57,7 @@ def dataset_exists_and_is_valid():
 # 5. Fetch one movie from TMDB
 
 def fetch_movie(movie_id):
-    url = f"https://api.themoviedb.org/3/movie/{movie_id}"
-
-    params = {
-        "api_key": API_KEY
-    }
-
-    response = requests.get(
-        url,
-        params=params,
-        timeout=15
-    )
-
-    # Raise an exception for HTTP errors
-    response.raise_for_status()
-
-    return response.json()
+    return fetch_json(f"{MOVIE_URL}{movie_id}", API_KEY)
 
 
 
