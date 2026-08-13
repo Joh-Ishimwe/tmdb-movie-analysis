@@ -71,9 +71,13 @@ def drop_irrelevant_columns(df):
 def extract_names(item_list):
     """Join the 'name' field of each dict in a list of dicts with '|'.
     Reused for genres, production_companies, production_countries, and
-    spoken_languages -- they're all shaped the same way."""
+    spoken_languages -- they're all shaped the same way.
+
+    Some TMDb languages (e.g. Xhosa) have no native-script 'name' -- only
+    'english_name'. Falling back keeps the language instead of silently
+    dropping it or leaving a stray '|' from an empty string."""
     if isinstance(item_list, list):
-        return "|".join([item['name'] for item in item_list])
+        return "|".join([item.get('name') or item.get('english_name') for item in item_list])
     return None
 
 
