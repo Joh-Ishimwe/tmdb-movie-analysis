@@ -7,12 +7,11 @@ the result. No network calls, so no .env credentials needed here.
 
 import json
 import logging
-from pathlib import Path
 
 import pandas as pd
 
 from tmdb_pipeline.cleaning import clean_data
-from tmdb_pipeline.cli import ensure_dir, force_utf8_stdout, log_loaded, require_file
+from tmdb_pipeline.cli import PROJECT_ROOT, ensure_dir, force_utf8_stdout, log_loaded, require_file
 from tmdb_pipeline.logging_config import setup_logging
 
 force_utf8_stdout()
@@ -20,8 +19,8 @@ force_utf8_stdout()
 logger = logging.getLogger("02_clean_data")
 
 
-RAW_FILE = Path("data/raw/movies.json")
-PROCESSED_DIR = Path("data/processed")
+RAW_FILE = PROJECT_ROOT / "data/raw/movies.json"
+PROCESSED_DIR = PROJECT_ROOT / "data/processed"
 PROCESSED_FILE = PROCESSED_DIR / "tmdb_movies_clean.csv"
 
 

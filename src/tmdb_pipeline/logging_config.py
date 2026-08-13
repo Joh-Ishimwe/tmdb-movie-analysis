@@ -6,9 +6,10 @@ gone can still be traced by what happened, where (module), and when
 """
 
 import logging
-from pathlib import Path
 
-LOG_DIR = Path("logs")
+from tmdb_pipeline.cli import PROJECT_ROOT
+
+LOG_DIR = PROJECT_ROOT / "logs"
 LOG_FILE = LOG_DIR / "pipeline.log"
 
 

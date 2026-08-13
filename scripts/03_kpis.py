@@ -7,11 +7,10 @@ pipeline's terminal output or logs -- this script only logs progress.
 """
 
 import logging
-from pathlib import Path
 
 import pandas as pd
 
-from tmdb_pipeline.cli import ensure_dir, force_utf8_stdout, log_loaded, require_file
+from tmdb_pipeline.cli import PROJECT_ROOT, ensure_dir, force_utf8_stdout, log_loaded, require_file
 from tmdb_pipeline.kpis import add_profit_and_roi
 from tmdb_pipeline.logging_config import setup_logging
 
@@ -20,8 +19,8 @@ force_utf8_stdout()
 logger = logging.getLogger("03_kpis")
 
 
-CLEAN_FILE = Path("data/processed/tmdb_movies_clean.csv")
-PROCESSED_DIR = Path("data/processed")
+CLEAN_FILE = PROJECT_ROOT / "data/processed/tmdb_movies_clean.csv"
+PROCESSED_DIR = PROJECT_ROOT / "data/processed"
 KPI_FILE = PROCESSED_DIR / "tmdb_movies_with_kpis.csv"
 
 

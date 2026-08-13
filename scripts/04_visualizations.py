@@ -5,11 +5,10 @@ Thin wrapper: loads KPI data, calls tmdb_pipeline.visualization to save charts.
 """
 
 import logging
-from pathlib import Path
 
 import pandas as pd
 
-from tmdb_pipeline.cli import force_utf8_stdout, log_loaded, require_file
+from tmdb_pipeline.cli import PROJECT_ROOT, force_utf8_stdout, log_loaded, require_file
 from tmdb_pipeline.logging_config import setup_logging
 from tmdb_pipeline.visualization import (
     apply_chart_style,
@@ -25,8 +24,8 @@ force_utf8_stdout()
 logger = logging.getLogger("04_visualizations")
 
 
-KPI_FILE = Path("data/processed/tmdb_movies_with_kpis.csv")
-FIGURES_DIR = "reports/figures"
+KPI_FILE = PROJECT_ROOT / "data/processed/tmdb_movies_with_kpis.csv"
+FIGURES_DIR = PROJECT_ROOT / "reports/figures"
 
 
 def load_kpi_data():

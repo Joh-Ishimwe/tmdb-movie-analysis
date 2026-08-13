@@ -4,6 +4,12 @@ required file or raise with guidance" pattern every stage repeats.
 """
 
 import sys
+from pathlib import Path
+
+# Anchor to this installed package's location, not the current working
+# directory -- otherwise data/logs/reports land in the wrong place when the
+# pipeline is run from inside scripts/ instead of the project root.
+PROJECT_ROOT = Path(__file__).resolve().parents[2]
 
 
 def force_utf8_stdout():
