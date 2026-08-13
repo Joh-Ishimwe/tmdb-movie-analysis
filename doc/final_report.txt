@@ -52,9 +52,20 @@ Step 4 -- Visualization: five charts (Revenue vs. Budget, ROI by Genre,
 Popularity vs. Rating, Yearly Revenue Trend, Franchise vs. Standalone)
 were rendered with Matplotlib and saved to reports/figures/.
 
+Code organization: the actual logic for all four steps lives in
+src/tmdb_pipeline/, a real installed Python package (pip install -e .),
+not inline in scripts or the notebook. scripts/01-04_*.py are thin CLI
+wrappers -- they handle file I/O and printing, then call straight into
+tmdb_pipeline. That split is what makes the logic directly importable
+and unit-testable (`from tmdb_pipeline.cleaning import extract_names`)
+without file-path-based tricks to load a script whose filename (e.g.
+02_clean_data.py) isn't a valid Python module name.
+
 The full pipeline is reproducible end to end via:
     python scripts/run_pipeline.py
-and is covered by an automated test suite (50 tests, see tests/) that
+or the installed console command:
+    tmdb-pipeline
+and is covered by an automated test suite (56 tests, see tests/) that
 exercises the cleaning, KPI, and fetch logic without hitting the real
 API.
 

@@ -12,25 +12,40 @@ findings, methodology, and conclusions.
 ## Project structure
 
 ```
-notebook.ipynb                Exploratory workflow -- Steps 1-4 end to end
-scripts/
-  01_fetch_raw_data.py        Step 1: fetch raw movie data from TMDb
-  02_clean_data.py            Step 2: clean & preprocess
-  03_kpis.py                  Step 3: KPI analysis
-  04_visualizations.py        Step 4: charts (Matplotlib)
-  run_pipeline.py             Runs all four stages in order
-  tmdb_api.py                 Shared TMDb API helpers (credentials, requests)
-tests/                        Automated tests for the pipeline logic
+notebook.ipynb                  Exploratory workflow -- Steps 1-4 end to end
+src/tmdb_pipeline/               The actual reusable logic, as a real installed
+                                 package -- import it directly, no path tricks
+  api.py                         Credentials + HTTP with retry/backoff
+  fetch.py                       Step 1: fetch raw movie data from TMDb
+  cleaning.py                    Step 2: clean & preprocess
+  kpis.py                        Step 3: KPI analysis
+  visualization.py               Step 4: charts (Matplotlib)
+scripts/                        Thin CLI wrappers around tmdb_pipeline --
+                                 each reads input, calls into the package,
+                                 prints/saves output
+  01_fetch_raw_data.py
+  02_clean_data.py
+  03_kpis.py
+  04_visualizations.py
+  run_pipeline.py               Runs all four stages in order
+tests/                          Tests for tmdb_pipeline -- plain imports,
+                                 no path tricks needed
 data/
-  raw/movies.json             Cached raw API response (gitignored)
-  processed/                  Cleaned & KPI-enriched CSVs (gitignored)
-reports/figures/              Generated chart PNGs (gitignored)
-doc/final_report.txt          Key insights, methodology, conclusions
+  raw/movies.json               Cached raw API response (gitignored)
+  processed/                    Cleaned & KPI-enriched CSVs (gitignored)
+reports/figures/                Generated chart PNGs (gitignored)
+doc/final_report.txt            Key insights, methodology, conclusions
 ```
 
 Each script stage writes the file the next one reads:
 `01 -> data/raw/movies.json -> 02 -> data/processed/tmdb_movies_clean.csv
 -> 03 -> data/processed/tmdb_movies_with_kpis.csv -> 04 -> reports/figures/*.png`
+
+The scripts are intentionally thin: `01_fetch_raw_data.py` handles reading
+the on-disk cache and writing the result, but the actual fetch/validate
+logic is `tmdb_pipeline.fetch`, importable and testable on its own
+(`from tmdb_pipeline.cleaning import extract_names`) rather than requiring
+file-path-based tricks to load a numbered script.
 
 ## Setup
 
@@ -54,9 +69,14 @@ Each script stage writes the file the next one reads:
 ## Usage
 
 **Run the full pipeline** (fetch -> clean -> KPIs -> visualize) in one
-command:
+command -- either directly:
 ```
 python scripts/run_pipeline.py
+```
+or via the installed console command (from `pip install -e .`'s
+`[project.scripts]` entry point):
+```
+tmdb-pipeline
 ```
 
 **Or run any stage individually** (each is idempotent and safe to
@@ -79,6 +99,6 @@ All commands assume the project root as the working directory.
 pytest
 ```
 
-43 tests cover the cleaning transforms, the KPI ranking/aggregation
+56 tests cover the cleaning transforms, the KPI ranking/aggregation
 logic, and the API-facing functions (network calls mocked via
 `responses` -- no real API calls, no burned quota). See `tests/`.
