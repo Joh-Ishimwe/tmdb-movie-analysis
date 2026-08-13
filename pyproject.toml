@@ -1,10 +1,11 @@
 # pyproject.toml -- the modern Python project manifest.
 #
-# It replaces requirements.txt AND makes `src/` a real, installable package.
-# That second part is what makes `from src.ingestion.api import TMDbClient`
-# resolve identically in a test, a script, a notebook and a container.
+# It replaces requirements.txt AND makes src/tmdb_pipeline a real,
+# installable package. That's what makes `from tmdb_pipeline.cleaning
+# import extract_names` resolve identically in a test, a script, and a
+# container -- no sys.path or importlib-by-path tricks needed.
 #
-# Install for development with:   pip install -e ".[dev]"
+# Install for development with:   pip install -e ".[dev,notebook]"
 # The -e means "editable": your edits take effect immediately, with no reinstall.
 
 [build-system]
@@ -42,11 +43,15 @@ notebook = [
 ]
 
 [project.scripts]
-# Installs a real command: `tmdb-pipeline --env prod`
+# Installs a real command: `tmdb-pipeline`
 tmdb-pipeline = "scripts.run_pipeline:main"
 
-[tool.setuptools.packages.find]
-include = ["src*", "scripts*"]
+[tool.setuptools]
+packages = ["tmdb_pipeline", "scripts"]
+
+[tool.setuptools.package-dir]
+tmdb_pipeline = "src/tmdb_pipeline"
+scripts = "scripts"
 
 [tool.ruff]
 line-length = 100
