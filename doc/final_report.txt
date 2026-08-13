@@ -1,0 +1,182 @@
+TMDb MOVIE DATA ANALYSIS -- FINAL REPORT
+==========================================
+
+
+1. OVERVIEW
+------------
+
+This project extracts, cleans, and analyzes data for 19 movies specified
+in the project brief, using the TMDb API. It answers a set of KPI
+questions (best/worst performers, franchise vs. standalone success, most
+successful directors) and produces supporting visualizations.
+
+Of the 19 movie IDs requested, 18 resolved to real TMDb records; ID 0 is
+not a valid movie ID and was skipped automatically during fetching. All
+figures in this report are therefore based on N = 18 movies.
+
+
+2. METHODOLOGY
+----------------
+
+Step 1 -- Fetch: Each movie's core record was pulled from the TMDb
+/movie/{id} endpoint and cached locally (data/raw/movies.json) so the
+pipeline never re-fetches unnecessarily.
+
+Step 2 -- Clean & Preprocess: Irrelevant/undocumented columns were
+dropped (adult, imdb_id, original_title, video, homepage, softcore).
+JSON-nested fields (genres, production_companies, production_countries,
+spoken_languages, belongs_to_collection) were flattened into readable
+'|'-joined strings. Data types were coerced (budget/id/popularity to
+numeric, release_date to datetime). Budget/revenue/runtime values of
+exactly 0 were treated as missing, not real zeros, and converted to
+NaN. vote_average was blanked wherever vote_count was 0, since a rating
+with no votes behind it isn't meaningful. Cast, cast size, director, and
+crew size were enriched from the separate /credits endpoint.
+
+Step 3 -- KPI Analysis: budget and revenue were converted to millions of
+USD; profit (revenue - budget) and ROI (revenue / budget) were derived.
+Rankings were computed with a single reusable ranking function so every
+KPI (revenue, budget, profit, ROI, votes, rating, popularity) is
+computed the same way. ROI rankings and the "rated" rankings apply the
+brief's filters (budget >= 10M for ROI; vote_count >= 10 for rating) --
+these are real defects to watch for, since a naive top-N without the
+filter can pick a different answer than a filtered one on the same
+data.
+
+Step 4 -- Visualization: five charts (Revenue vs. Budget, ROI by Genre,
+Popularity vs. Rating, Yearly Revenue Trend, Franchise vs. Standalone)
+were rendered with Matplotlib and saved to reports/figures/.
+
+The full pipeline is reproducible end to end via:
+    python scripts/run_pipeline.py
+and is covered by an automated test suite (43 tests, see tests/) that
+exercises the cleaning, KPI, and fetch logic without hitting the real
+API.
+
+
+3. KEY INSIGHTS
+------------------
+
+Best / Worst Performing Movies
+- Highest revenue: Avatar ($2,923.7M), Avengers: Endgame ($2,799.4M),
+  Titanic ($2,264.2M).
+- Highest budget: Avengers: Endgame ($356M), Avengers: Infinity War and
+  Star Wars: The Last Jedi (tied at $300M).
+- Highest profit: Avatar ($2,686.7M), Avengers: Endgame ($2,443.4M),
+  Titanic ($2,064.2M) -- the same three movies lead both revenue and
+  profit, since their budgets are proportionally smaller than their
+  earnings.
+- Lowest profit: Star Wars: The Last Jedi ($1,034.4M), Incredibles 2
+  ($1,043.2M), Beauty and the Beast ($1,106.1M) -- still hugely
+  profitable in absolute terms; "lowest" here only means lowest within
+  this specific set of blockbusters, not unprofitable.
+- Highest ROI (budget >= $10M): Avatar (12.3x), Titanic (11.3x),
+  Jurassic World (11.1x).
+- Lowest ROI (budget >= $10M): Star Wars: The Last Jedi (4.4x),
+  Avengers: Age of Ultron (6.0x), Incredibles 2 (6.2x).
+- Most voted: The Avengers (39,167 votes), Avatar (34,419), Avengers:
+  Infinity War (32,531).
+- Highest rated (>= 10 votes): Avengers: Infinity War (8.24), Avengers:
+  Endgame (8.24), Harry Potter and the Deathly Hallows: Part 2 (8.08).
+- Lowest rated (>= 10 votes): Jurassic World: Fallen Kingdom (6.53),
+  Jurassic World (6.70), Star Wars: The Last Jedi (6.74).
+- Most popular (TMDb's live popularity metric): Avengers: Infinity War
+  (92.0), The Avengers (77.9), Avengers: Endgame (65.2).
+- Rating and popularity correlate moderately (r = 0.785) -- popular
+  movies in this set do tend to be better-rated, though the two are far
+  from identical.
+
+Advanced Search Queries
+- "Best-rated Sci-Fi Action movies starring Bruce Willis" and "movies
+  starring Uma Thurman directed by Quentin Tarantino" both returned zero
+  matches. This is expected, not a bug: the 18 movies in this dataset
+  are the specific blockbuster franchise entries named in the project
+  brief (Avengers, Avatar, Star Wars, Titanic, Jurassic World, etc.);
+  titles like Die Hard or Pulp Fiction were never fetched. The filtering
+  logic itself is written to work correctly against any larger dataset.
+
+Franchise vs. Standalone Performance
+- 16 of 18 movies belong to a franchise (belongs_to_collection is set);
+  only 2 are standalone.
+- Mean revenue is close either way (Standalone $1,765.1M vs. Franchise
+  $1,682.8M), but median ROI favors standalone films (9.6x vs. 7.8x),
+  and franchise films run a noticeably higher mean budget ($218M vs.
+  $180M) and mean popularity (36.8 vs. 27.5). Caveat: this split is only
+  2 standalone movies vs. 16 franchise movies, so the standalone side of
+  this comparison is not statistically meaningful -- it describes these
+  two specific movies, not "standalone films" in general.
+
+Most Successful Movie Franchises (by total revenue)
+1. The Avengers Collection -- 4 movies, $7,776.1M total revenue, 7.955
+   average rating.
+2. Star Wars Collection -- 2 movies, $3,402.6M, 6.995 average rating.
+3. Jurassic Park Collection -- 2 movies, $2,982.0M, 6.617 average
+   rating.
+4. Avatar Collection -- 1 movie, $2,923.7M, 7.609 average rating.
+5. Frozen Collection -- 2 movies, $2,727.9M, 7.238 average rating.
+
+Most Successful Directors (by total revenue)
+1. James Cameron -- 2 movies (Avatar, Titanic), $5,187.9M total revenue,
+   7.755 average rating.
+2. Joss Whedon -- 2 movies, $2,924.2M, 7.671 average rating.
+3. Anthony Russo -- 1 movie (Avengers: Endgame), $2,799.4M, 8.239
+   average rating -- the highest rating among these top 5 directors by
+   revenue. Across all 15 directors in the dataset, Joe Russo (Avengers:
+   Infinity War, 8.240) edges it out by a hair, and David Yates (Harry
+   Potter and the Deathly Hallows: Part 2, 8.080) is close behind.
+4. Jennifer Lee -- 2 movies, $2,727.9M, 7.238 average rating.
+5. J.J. Abrams -- 1 movie, $2,068.2M, 7.245 average rating.
+
+
+4. DATA QUALITY NOTES
+------------------------
+
+- spoken_languages: TMDb has no native-script name for some languages
+  (Xhosa, spoken in Avengers: Endgame, Avengers: Infinity War, and Black
+  Panther) -- only an English name. The cleaning step falls back to the
+  English name for these instead of silently dropping the language or
+  leaving a stray separator in the joined string.
+- belongs_to_collection, production_companies/countries, and
+  spoken_languages were all inspected with value_counts() after
+  extraction specifically to catch anomalies like this before they
+  reached the KPI stage.
+- No duplicate rows, no missing id/title, and no movie had fewer than
+  10 non-null columns -- the entire fetched set of 18 survived cleaning
+  intact.
+
+
+5. LIMITATIONS
+-----------------
+
+- Sample size: 18 movies is small, and all of them are high-profile
+  blockbusters specified in the project brief -- not a random or
+  representative sample of the movie industry. Aggregates (means,
+  medians, correlations) describe this specific set, not movies in
+  general.
+- Franchise vs. standalone: the standalone group has only 2 movies;
+  treat that comparison as illustrative, not statistically robust.
+- ROI by genre (see reports/figures/roi_by_genre.png): most genres have
+  only 1-3 data points, so those boxplots are similarly illustrative.
+- Yearly revenue trend reflects the release years of these 18
+  hand-picked movies, not actual industry-wide box office trends for
+  those years.
+- popularity and vote_count are live TMDb metrics that change over
+  time; the exact values in this report reflect the dataset as fetched
+  and will drift on a fresh pull.
+
+
+6. CONCLUSIONS
+-----------------
+
+Within this dataset, the Marvel/Avengers franchise is the strongest
+performer by nearly every measure: it has the most total revenue by
+franchise, its directors (the Russo brothers, on Endgame and Infinity
+War) hold the two highest average ratings of any director in the
+dataset, and its movies dominate the votes and popularity rankings.
+Avatar and Titanic (both James Cameron) combine for the single highest
+director-level revenue total, driven almost entirely by exceptional ROI
+rather than budget size -- both rank in the top 3 for ROI despite
+mid-range budgets. Franchise films in general command bigger budgets
+and more popularity than standalone films in this set, but standalone
+films showed a better median ROI, though that finding rests on only 2
+data points and should not be generalized.
