@@ -19,8 +19,12 @@ figures in this report are therefore based on N = 18 movies.
 ----------------
 
 Step 1 -- Fetch: Each movie's core record was pulled from the TMDb
-/movie/{id} endpoint and cached locally (data/raw/movies.json) so the
-pipeline never re-fetches unnecessarily.
+/movie/{id} endpoint using append_to_response=credits, which bundles
+cast/crew into the same call instead of a separate /movie/{id}/credits
+request per movie -- 19 API calls total for 19 requested IDs, not the
+~37 an unbundled fetch-then-credits approach would need. Results are
+cached locally (data/raw/movies.json) so the pipeline never re-fetches
+unnecessarily.
 
 Step 2 -- Clean & Preprocess: Irrelevant/undocumented columns were
 dropped (adult, imdb_id, original_title, video, homepage, softcore).
@@ -30,8 +34,9 @@ spoken_languages, belongs_to_collection) were flattened into readable
 numeric, release_date to datetime). Budget/revenue/runtime values of
 exactly 0 were treated as missing, not real zeros, and converted to
 NaN. vote_average was blanked wherever vote_count was 0, since a rating
-with no votes behind it isn't meaningful. Cast, cast size, director, and
-crew size were enriched from the separate /credits endpoint.
+with no votes behind it isn't meaningful. Cast, cast size, director,
+and crew size were extracted from the credits data already bundled in
+Step 1.
 
 Step 3 -- KPI Analysis: budget and revenue were converted to millions of
 USD; profit (revenue - budget) and ROI (revenue / budget) were derived.

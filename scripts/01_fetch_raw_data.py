@@ -55,9 +55,16 @@ def dataset_exists_and_is_valid():
 
 
 # 5. Fetch one movie from TMDB
+# append_to_response=credits bundles cast/crew into this same call instead
+# of a separate /movie/{id}/credits request per movie afterward -- half
+# the API calls for the same data (was ~2N calls, now ~N).
 
 def fetch_movie(movie_id):
-    return fetch_json(f"{MOVIE_URL}{movie_id}", API_KEY)
+    return fetch_json(
+        f"{MOVIE_URL}{movie_id}",
+        API_KEY,
+        extra_params={"append_to_response": "credits"},
+    )
 
 
 

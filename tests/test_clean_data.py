@@ -200,16 +200,54 @@ def test_get_director_returns_none_when_no_director_listed(clean_data):
     assert clean_data.get_director(credits) is None
 
 
-def test_map_credits_field_looks_up_by_id_and_defaults_to_none(clean_data):
-    df = pd.DataFrame({'id': [1, 2, 3]})
-    credits_data = {1: {'x': 'a'}, 3: {'x': 'c'}}  # id 2's credits failed to fetch
-    result = clean_data.map_credits_field(df, credits_data, lambda c: c['x'])
+def test_get_director_returns_first_listed_when_co_directed(clean_data):
+    """Known limitation, pinned rather than silently left undocumented:
+    for a co-directed film TMDb lists multiple crew members with
+    job='Director' (e.g. the real Endgame/Infinity War data has both
+    Russo brothers), and this takes only the first one in API order."""
+    credits = {'crew': [{'name': 'Anthony Russo', 'job': 'Director'},
+                         {'name': 'Joe Russo', 'job': 'Director'}]}
+    assert clean_data.get_director(credits) == 'Anthony Russo'
 
-    # pandas normalizes the missing lookup's None to NaN on an object-dtype
-    # Series -- check for missingness rather than `is None`.
-    assert result.iloc[0] == 'a'
-    assert pd.isna(result.iloc[1])
-    assert result.iloc[2] == 'c'
+
+# --- credits helpers are defensive against a missing/malformed credits dict ---
+# (a row's 'credits' value should always be a dict once append_to_response=
+# credits is used, but these guard against unexpected shapes rather than
+# raising deep inside a .apply() call)
+
+def test_get_cast_string_non_dict_returns_none(clean_data):
+    assert clean_data.get_cast_string(None) is None
+    assert clean_data.get_cast_string(float('nan')) is None
+
+
+def test_get_list_size_non_dict_returns_zero(clean_data):
+    assert clean_data.get_list_size(None, 'cast') == 0
+
+
+def test_get_director_non_dict_returns_none(clean_data):
+    assert clean_data.get_director(None) is None
+
+
+# --- add_cast_and_crew reads from an already-embedded 'credits' column ------
+
+def test_add_cast_and_crew_extracts_from_credits_column_and_drops_it(clean_data):
+    df = pd.DataFrame({
+        'id': [1, 2],
+        'credits': [
+            {'cast': [{'name': 'Actor A'}], 'crew': [{'name': 'Dir A', 'job': 'Director'}]},
+            {'cast': [], 'crew': []},
+        ],
+    })
+
+    result = clean_data.add_cast_and_crew(df)
+
+    assert 'credits' not in result.columns
+    assert result.loc[0, 'cast'] == 'Actor A'
+    assert result.loc[0, 'director'] == 'Dir A'
+    assert result.loc[0, 'cast_size'] == 1
+    assert pd.isna(result.loc[1, 'cast'])
+    assert pd.isna(result.loc[1, 'director'])
+    assert result.loc[1, 'crew_size'] == 0
 
 
 # --- finalize ---------------------------------------------------------------------

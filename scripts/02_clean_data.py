@@ -1,10 +1,12 @@
 """
 Step 2: Data Cleaning and Preprocessing
 
-Loads the raw TMDb dataset produced by 01_fetch_raw_data.py, cleans and
-transforms it, enriches it with cast/crew data from the /credits endpoint,
-and saves the result to data/processed/tmdb_movies_clean.csv so Step 3
-(KPI analysis) can load it directly without re-fetching from the API.
+Loads the raw TMDb dataset produced by 01_fetch_raw_data.py (which already
+includes cast/crew, fetched via append_to_response=credits), cleans and
+transforms it, and saves the result to data/processed/tmdb_movies_clean.csv
+so Step 3 (KPI analysis) can load it directly without re-fetching from the
+API. This script makes no network calls itself -- it's pure data
+transformation, so it needs no .env credentials to run.
 """
 
 import json
@@ -13,9 +15,6 @@ from pathlib import Path
 
 import numpy as np
 import pandas as pd
-import requests
-
-from tmdb_api import load_credentials, fetch_json
 
 # Windows terminals default to cp1252, which can't print some movie titles/
 # language names (accented characters, etc.). Force UTF-8 so this script
@@ -24,19 +23,14 @@ if hasattr(sys.stdout, "reconfigure"):
     sys.stdout.reconfigure(encoding="utf-8")
 
 
-# 1. Load environment variables
-
-API_KEY, MOVIE_URL = load_credentials()
-
-
-# 2. File locations
+# 1. File locations
 
 RAW_FILE = Path("data/raw/movies.json")
 PROCESSED_DIR = Path("data/processed")
 PROCESSED_FILE = PROCESSED_DIR / "tmdb_movies_clean.csv"
 
 
-# 3. Load the raw dataset
+# 2. Load the raw dataset
 
 def load_raw_data():
     if not RAW_FILE.exists():
@@ -51,7 +45,7 @@ def load_raw_data():
     return pd.DataFrame(movies_data)
 
 
-# 4. Drop irrelevant / undocumented columns
+# 3. Drop irrelevant / undocumented columns
 
 def drop_irrelevant_columns(df):
     columns_to_drop = ['adult', 'imdb_id', 'original_title', 'video', 'homepage']
@@ -66,7 +60,7 @@ def drop_irrelevant_columns(df):
     return df
 
 
-# 5. Extract JSON-nested columns into clean, readable strings
+# 4. Extract JSON-nested columns into clean, readable strings
 
 def extract_names(item_list):
     """Join the 'name' field of each dict in a list of dicts with '|'.
@@ -105,7 +99,7 @@ def extract_json_columns(df):
     return df
 
 
-# 6. Inspect extracted columns for anomalies
+# 5. Inspect extracted columns for anomalies
 
 def inspect_extracted_columns(df):
     extracted_cols = [
@@ -120,7 +114,7 @@ def inspect_extracted_columns(df):
         print()
 
 
-# 7. Convert data types
+# 6. Convert data types
 # errors='coerce' converts unparseable values to NaN/NaT instead of crashing.
 
 def convert_data_types(df):
@@ -134,7 +128,7 @@ def convert_data_types(df):
     return df
 
 
-# 8. Replace unrealistic zero values & convert to million USD
+# 7. Replace unrealistic zero values & convert to million USD
 # A budget/revenue/runtime of exactly 0 is not physically plausible for a
 # real released movie -- it signals missing data, not a true value of zero.
 
@@ -153,7 +147,7 @@ def fix_budget_revenue_runtime(df):
     return df
 
 
-# 9. Treat vote_average as missing when vote_count is 0
+# 8. Treat vote_average as missing when vote_count is 0
 # If vote_count is 0, vote_average has no real data behind it.
 
 def fix_zero_vote_counts(df):
@@ -164,7 +158,7 @@ def fix_zero_vote_counts(df):
     return df
 
 
-# 10. Replace placeholder text in overview / tagline
+# 9. Replace placeholder text in overview / tagline
 
 def fix_placeholder_text(df):
     print(df['overview'].value_counts().head(10))
@@ -175,19 +169,25 @@ def fix_placeholder_text(df):
     return df
 
 
-# 11. Remove duplicates and rows with unknown id / title
+# 10. Remove duplicates and rows with unknown id / title
 
 def drop_duplicates_and_unknowns(df):
-    print("Duplicate rows:", df.duplicated().sum())
+    # 'credits' holds nested dicts, which pandas can't hash to compare --
+    # exclude it from the duplicate check (it's dropped later anyway, in
+    # add_cast_and_crew). id/title alone are enough to define a duplicate
+    # movie record.
+    is_duplicate = df.drop(columns='credits', errors='ignore').duplicated()
+
+    print("Duplicate rows:", is_duplicate.sum())
     print("Missing id:", df['id'].isna().sum())
     print("Missing title:", df['title'].isna().sum())
 
-    df = df.drop_duplicates()
+    df = df[~is_duplicate]
     df = df.dropna(subset=['id', 'title'])
     return df
 
 
-# 12. Keep only rows with at least 10 non-NaN columns
+# 11. Keep only rows with at least 10 non-NaN columns
 
 def drop_sparse_rows(df, min_non_null=10):
     non_null_counts = df.notna().sum(axis=1)
@@ -196,7 +196,7 @@ def drop_sparse_rows(df, min_non_null=10):
     return df
 
 
-# 13. Filter to 'Released' movies only, then drop status
+# 12. Filter to 'Released' movies only, then drop status
 
 def filter_released(df):
     print(df['status'].value_counts())
@@ -209,27 +209,15 @@ def filter_released(df):
     return df
 
 
-# 14. Fetch cast & crew (credits endpoint)
-# cast, cast_size, director, and crew_size don't exist in the /movie/{id}
-# response -- they come from a separate endpoint: /movie/{id}/credits.
-
-def fetch_credits(movie_ids):
-    credits_data = {}
-    failed_credit_ids = []
-
-    for mid in movie_ids:
-        url = f"{MOVIE_URL}{mid}/credits"
-        try:
-            credits_data[mid] = fetch_json(url, API_KEY, extra_params={"language": "en-US"})
-        except requests.exceptions.RequestException as error:
-            print(f"Failed to fetch credits for movie_id {mid}: {error}")
-            failed_credit_ids.append(mid)
-
-    print(f"Successfully fetched credits for {len(credits_data)} out of {len(movie_ids)} movies.")
-    return credits_data
-
+# 13. Extract cast & crew
+# cast, cast_size, director, and crew_size aren't in the base /movie/{id}
+# response, but 01_fetch_raw_data.py requests them with
+# append_to_response=credits, so they arrive bundled under df['credits']
+# -- no separate /movie/{id}/credits call needed per movie here.
 
 def get_cast_string(credits, top_n=10):
+    if not isinstance(credits, dict):
+        return None
     cast_list = credits.get('cast', [])
     names = [person['name'] for person in cast_list[:top_n]]
     return "|".join(names) if names else None
@@ -237,10 +225,14 @@ def get_cast_string(credits, top_n=10):
 
 def get_list_size(credits, key):
     """Reused for both cast_size (key='cast') and crew_size (key='crew')."""
+    if not isinstance(credits, dict):
+        return 0
     return len(credits.get(key, []))
 
 
 def get_director(credits):
+    if not isinstance(credits, dict):
+        return None
     crew_list = credits.get('crew', [])
     for person in crew_list:
         if person.get('job') == 'Director':
@@ -248,24 +240,16 @@ def get_director(credits):
     return None
 
 
-def map_credits_field(df, credits_data, extractor):
-    """Look up each row's credits (by movie id) and apply extractor to it,
-    or None if that movie's credits failed to fetch."""
-    return df['id'].map(lambda mid: extractor(credits_data[mid]) if mid in credits_data else None)
-
-
 def add_cast_and_crew(df):
-    credits_data = fetch_credits(df['id'])
+    df['cast'] = df['credits'].apply(get_cast_string)
+    df['cast_size'] = df['credits'].apply(lambda c: get_list_size(c, 'cast'))
+    df['director'] = df['credits'].apply(get_director)
+    df['crew_size'] = df['credits'].apply(lambda c: get_list_size(c, 'crew'))
 
-    df['cast'] = map_credits_field(df, credits_data, get_cast_string)
-    df['cast_size'] = map_credits_field(df, credits_data, lambda c: get_list_size(c, 'cast'))
-    df['director'] = map_credits_field(df, credits_data, get_director)
-    df['crew_size'] = map_credits_field(df, credits_data, lambda c: get_list_size(c, 'crew'))
-
-    return df
+    return df.drop(columns=['credits'])
 
 
-# 15. Reorder columns & reset index
+# 14. Reorder columns & reset index
 
 FINAL_COLUMNS = [
     'id', 'title', 'tagline', 'release_date', 'genres', 'belongs_to_collection',
@@ -281,7 +265,7 @@ def finalize(df):
     return df
 
 
-# 16. Main pipeline
+# 15. Main pipeline
 
 def clean_data():
     df = load_raw_data()
