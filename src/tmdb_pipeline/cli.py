@@ -18,8 +18,10 @@ def require_file(path, prior_step):
         raise FileNotFoundError(f"{path} not found. Run {prior_step} first.")
 
 
-def log_loaded(count, path):
-    print(f"Loaded {count} movies from {path}")
+def log_loaded(logger, count, path):
+    """logger is passed in (rather than used from here) so the log line
+    is attributed to the calling script/stage, not to this helper."""
+    logger.info("Loaded %d movies from %s", count, path)
 
 
 def ensure_dir(path):

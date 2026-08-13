@@ -65,9 +65,13 @@ The full pipeline is reproducible end to end via:
     python scripts/run_pipeline.py
 or the installed console command:
     tmdb-pipeline
-and is covered by an automated test suite (56 tests, see tests/) that
+and is covered by an automated test suite (65 tests, see tests/) that
 exercises the cleaning, KPI, and fetch logic without hitting the real
 API.
+
+Every stage logs to both the console and logs/pipeline.log (timestamp,
+level, and which stage/module logged it), so a failure can be traced by
+what happened, where, and when even after the terminal session is gone.
 
 
 3. KEY INSIGHTS

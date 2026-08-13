@@ -6,8 +6,12 @@ raw DataFrame (already including cast/crew, from fetch.py) and returns
 the cleaned one. scripts/02_clean_data.py handles the file I/O.
 """
 
+import logging
+
 import numpy as np
 import pandas as pd
+
+logger = logging.getLogger(__name__)
 
 FINAL_COLUMNS = [
     'id', 'title', 'tagline', 'release_date', 'genres', 'belongs_to_collection',
@@ -25,7 +29,7 @@ def drop_irrelevant_columns(df):
     if 'softcore' in df.columns:
         df = df.drop(columns=['softcore'])
 
-    print(f"Columns remaining: {df.shape[1]}")
+    logger.info("Columns remaining: %d", df.shape[1])
     return df
 
 
@@ -72,10 +76,11 @@ def inspect_extracted_columns(df):
     ]
 
     for col in extracted_cols:
-        print(f"--- {col} ---")
-        print(f"Missing/empty: {df[col].isna().sum() + (df[col] == '').sum()}")
-        print(df[col].value_counts().head(10))
-        print()
+        missing = df[col].isna().sum() + (df[col] == '').sum()
+        logger.info(
+            "--- %s --- Missing/empty: %d\n%s",
+            col, missing, df[col].value_counts().head(10),
+        )
 
 
 def convert_data_types(df):
@@ -96,9 +101,10 @@ def fix_budget_revenue_runtime(df):
     df['revenue'] = df['revenue'].replace(0, np.nan)
     df['runtime'] = df['runtime'].replace(0, np.nan)
 
-    print("Missing budget:", df['budget'].isna().sum())
-    print("Missing revenue:", df['revenue'].isna().sum())
-    print("Missing runtime:", df['runtime'].isna().sum())
+    logger.info(
+        "Missing budget: %d, revenue: %d, runtime: %d",
+        df['budget'].isna().sum(), df['revenue'].isna().sum(), df['runtime'].isna().sum(),
+    )
 
     df['budget_musd'] = df['budget'] / 1_000_000
     df['revenue_musd'] = df['revenue'] / 1_000_000
@@ -109,15 +115,15 @@ def fix_budget_revenue_runtime(df):
 def fix_zero_vote_counts(df):
     # vote_count == 0 means vote_average has no real data behind it.
     zero_votes = df[df['vote_count'] == 0]
-    print(f"Movies with 0 vote_count: {len(zero_votes)}")
+    logger.info("Movies with 0 vote_count: %d", len(zero_votes))
 
     df.loc[df['vote_count'] == 0, 'vote_average'] = np.nan
     return df
 
 
 def fix_placeholder_text(df):
-    print(df['overview'].value_counts().head(10))
-    print(df['tagline'].value_counts().head(10))
+    logger.info("overview value_counts:\n%s", df['overview'].value_counts().head(10))
+    logger.info("tagline value_counts:\n%s", df['tagline'].value_counts().head(10))
 
     df['overview'] = df['overview'].replace('No Data', np.nan)
     df['tagline'] = df['tagline'].replace('No Data', np.nan)
@@ -129,9 +135,10 @@ def drop_duplicates_and_unknowns(df):
     # dropped later anyway in add_cast_and_crew.
     is_duplicate = df.drop(columns='credits', errors='ignore').duplicated()
 
-    print("Duplicate rows:", is_duplicate.sum())
-    print("Missing id:", df['id'].isna().sum())
-    print("Missing title:", df['title'].isna().sum())
+    logger.info(
+        "Duplicate rows: %d, missing id: %d, missing title: %d",
+        is_duplicate.sum(), df['id'].isna().sum(), df['title'].isna().sum(),
+    )
 
     df = df[~is_duplicate]
     df = df.dropna(subset=['id', 'title'])
@@ -141,18 +148,17 @@ def drop_duplicates_and_unknowns(df):
 def drop_sparse_rows(df, min_non_null=10):
     non_null_counts = df.notna().sum(axis=1)
     df = df[non_null_counts >= min_non_null]
-    print(f"Rows remaining: {len(df)}")
+    logger.info("Rows remaining: %d", len(df))
     return df
 
 
 def filter_released(df):
-    print(df['status'].value_counts())
+    logger.info("status value_counts:\n%s", df['status'].value_counts())
 
     df = df[df['status'] == 'Released']
     df = df.drop(columns=['status'])
 
-    print(f"Rows remaining: {len(df)}")
-    print(f"Columns remaining: {df.shape[1]}")
+    logger.info("Rows remaining: %d, columns remaining: %d", len(df), df.shape[1])
     return df
 
 

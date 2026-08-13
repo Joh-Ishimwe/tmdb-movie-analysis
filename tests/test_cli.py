@@ -1,5 +1,7 @@
 """Tests for tmdb_pipeline.cli -- shared script boilerplate."""
 
+import logging
+
 import pytest
 
 from tmdb_pipeline.cli import ensure_dir, force_utf8_stdout, log_loaded, require_file
@@ -17,9 +19,14 @@ def test_require_file_does_not_raise_when_present(tmp_path):
     require_file(path, '01_fetch_raw_data.py')  # no raise
 
 
-def test_log_loaded_prints_count_and_path(capsys):
-    log_loaded(18, 'data/raw/movies.json')
-    assert capsys.readouterr().out == "Loaded 18 movies from data/raw/movies.json\n"
+def test_log_loaded_logs_count_and_path_under_caller_logger(caplog):
+    logger = logging.getLogger('some.calling.script')
+    with caplog.at_level(logging.INFO):
+        log_loaded(logger, 18, 'data/raw/movies.json')
+
+    assert len(caplog.records) == 1
+    assert caplog.records[0].name == 'some.calling.script'
+    assert caplog.records[0].message == "Loaded 18 movies from data/raw/movies.json"
 
 
 def test_ensure_dir_creates_missing_nested_directory(tmp_path):

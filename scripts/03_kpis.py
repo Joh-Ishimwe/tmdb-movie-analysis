@@ -4,6 +4,7 @@ Step 3: KPI Implementation & Analysis.
 Thin wrapper: loads data, calls tmdb_pipeline.kpis, prints/saves results.
 """
 
+import logging
 from pathlib import Path
 
 import pandas as pd
@@ -18,8 +19,11 @@ from tmdb_pipeline.kpis import (
     search_scifi_action_with_actor,
     top_movies,
 )
+from tmdb_pipeline.logging_config import setup_logging
 
 force_utf8_stdout()
+
+logger = logging.getLogger("03_kpis")
 
 
 CLEAN_FILE = Path("data/processed/tmdb_movies_clean.csv")
@@ -31,7 +35,7 @@ def load_clean_data():
     require_file(CLEAN_FILE, "02_clean_data.py")
 
     df = pd.read_csv(CLEAN_FILE)
-    log_loaded(len(df), CLEAN_FILE)
+    log_loaded(logger, len(df), CLEAN_FILE)
     return df
 
 
@@ -82,28 +86,34 @@ def print_advanced_search_queries(df):
 
 
 def main():
-    df = load_clean_data()
-    df = add_profit_and_roi(df)
+    setup_logging()
 
-    print_best_worst_performing(df)
-    print_advanced_search_queries(df)
+    try:
+        df = load_clean_data()
+        df = add_profit_and_roi(df)
 
-    print("\n--- Franchise vs. Standalone Performance ---")
-    print(franchise_vs_standalone_performance(df))
+        print_best_worst_performing(df)
+        print_advanced_search_queries(df)
 
-    print("\n--- Most Successful Movie Franchises ---")
-    print(most_successful_franchises(df))
+        print("\n--- Franchise vs. Standalone Performance ---")
+        print(franchise_vs_standalone_performance(df))
 
-    print("\n--- Most Successful Directors ---")
-    print(most_successful_directors(df))
+        print("\n--- Most Successful Movie Franchises ---")
+        print(most_successful_franchises(df))
 
-    # Add for the saved CSV -- franchise_vs_standalone_performance() only
-    # computes this on its own copy.
-    df['is_franchise'] = df['belongs_to_collection'].notna()
+        print("\n--- Most Successful Directors ---")
+        print(most_successful_directors(df))
 
-    ensure_dir(PROCESSED_DIR)
-    df.to_csv(KPI_FILE, index=False)
-    print(f"\nSaved {len(df)} rows to {KPI_FILE}")
+        # Add for the saved CSV -- franchise_vs_standalone_performance() only
+        # computes this on its own copy.
+        df['is_franchise'] = df['belongs_to_collection'].notna()
+
+        ensure_dir(PROCESSED_DIR)
+        df.to_csv(KPI_FILE, index=False)
+        logger.info("Saved %d rows to %s", len(df), KPI_FILE)
+    except Exception:
+        logger.exception("Step 3 (KPIs) failed.")
+        raise
 
 
 if __name__ == "__main__":

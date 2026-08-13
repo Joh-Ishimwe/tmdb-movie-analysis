@@ -8,8 +8,13 @@ Usage (from the project root): python scripts/run_pipeline.py
 """
 
 import importlib.util
+import logging
 import sys
 from pathlib import Path
+
+from tmdb_pipeline.logging_config import setup_logging
+
+logger = logging.getLogger("run_pipeline")
 
 SCRIPTS_DIR = Path(__file__).resolve().parent
 
@@ -35,25 +40,31 @@ def _load_script(filename):
 
 
 def run_pipeline():
-    for label, filename in STAGES:
-        print(f"\n{'=' * 60}")
-        print(label)
-        print("=" * 60)
+    current_stage = None
+    try:
+        for label, filename in STAGES:
+            current_stage = label
+            logger.info("=" * 60)
+            logger.info(label)
+            logger.info("=" * 60)
 
-        module = _load_script(filename)
-        module.main()
+            module = _load_script(filename)
+            module.main()
 
-    print(f"\n{'=' * 60}")
-    print("Pipeline complete.")
-    print("=" * 60)
+        logger.info("=" * 60)
+        logger.info("Pipeline complete.")
+        logger.info("=" * 60)
+    except Exception:
+        # Each stage's own main() already logged the full traceback under
+        # its own name; this adds the one thing it couldn't know itself --
+        # which stage was running when the pipeline stopped.
+        logger.error("Pipeline stopped during: %s", current_stage)
+        raise
 
 
 def main():
-    try:
-        run_pipeline()
-    except Exception as error:
-        print(f"\nPipeline failed: {error}", file=sys.stderr)
-        raise
+    setup_logging()
+    run_pipeline()
 
 
 if __name__ == "__main__":

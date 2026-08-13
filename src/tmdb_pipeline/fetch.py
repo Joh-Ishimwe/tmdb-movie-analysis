@@ -5,10 +5,13 @@ No hardcoded file paths -- usable from scripts, tests, or anywhere else.
 """
 
 import json
+import logging
 
 import requests
 
 from tmdb_pipeline.api import fetch_json
+
+logger = logging.getLogger(__name__)
 
 # Movie IDs required by the project brief.
 MOVIE_IDS = [
@@ -50,17 +53,15 @@ def fetch_movie(movie_id, api_key, movie_url):
     )
 
 
-def download_movies(movie_ids, api_key, movie_url, verbose=True):
+def download_movies(movie_ids, api_key, movie_url):
     """Fetch every ID, skipping individual failures rather than aborting
     the batch. Raises RuntimeError only if nothing downloaded at all."""
-    if verbose:
-        print("Downloading movie data from TMDB...")
+    logger.info("Downloading movie data from TMDB...")
 
     movies = []
 
     for movie_id in movie_ids:
-        if verbose:
-            print(f"Fetching movie ID: {movie_id}")
+        logger.info("Fetching movie ID: %s", movie_id)
 
         try:
             movie = fetch_movie(movie_id, api_key, movie_url)
@@ -70,41 +71,34 @@ def download_movies(movie_ids, api_key, movie_url, verbose=True):
 
                 # TMDB error responses can contain a "status_code"
                 if "status_code" in movie:
-                    if verbose:
-                        print(
-                            f"  Skipping ID {movie_id}: "
-                            f"{movie.get('status_message', 'API error')}"
-                        )
+                    logger.warning(
+                        "Skipping ID %s: %s",
+                        movie_id, movie.get('status_message', 'API error'),
+                    )
                     continue
 
                 movies.append(movie)
 
-            elif verbose:
-                print(f"  Skipping ID {movie_id}: empty response.")
+            else:
+                logger.warning("Skipping ID %s: empty response.", movie_id)
 
         except requests.exceptions.Timeout:
-            if verbose:
-                print(f"  Timeout while fetching ID {movie_id}.")
+            logger.warning("Timeout while fetching ID %s.", movie_id)
 
         except requests.exceptions.ConnectionError:
-            if verbose:
-                print(f"  Could not connect to TMDB while fetching ID {movie_id}.")
+            logger.warning("Could not connect to TMDB while fetching ID %s.", movie_id)
 
         except requests.exceptions.HTTPError as error:
-            if verbose:
-                print(f"  HTTP error for ID {movie_id}: {error}")
+            logger.warning("HTTP error for ID %s: %s", movie_id, error)
 
         except requests.exceptions.RequestException as error:
-            if verbose:
-                print(f"  Request failed for ID {movie_id}: {error}")
+            logger.warning("Request failed for ID %s: %s", movie_id, error)
 
     if not movies:
         raise RuntimeError(
             "No movie data was downloaded. The dataset will NOT be saved."
         )
 
-    if verbose:
-        print()
-        print(f"Successfully downloaded {len(movies)} movies.")
+    logger.info("Successfully downloaded %d movies.", len(movies))
 
     return movies

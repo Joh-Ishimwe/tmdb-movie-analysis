@@ -20,6 +20,8 @@ src/tmdb_pipeline/               The actual reusable logic, as a real installed
   cleaning.py                    Step 2: clean & preprocess
   kpis.py                        Step 3: KPI analysis
   visualization.py               Step 4: charts (Matplotlib)
+  cli.py                         Shared script boilerplate (UTF-8 setup, etc.)
+  logging_config.py              Console + logs/pipeline.log setup
 scripts/                        Thin CLI wrappers around tmdb_pipeline --
                                  each reads input, calls into the package,
                                  prints/saves output
@@ -34,6 +36,7 @@ data/
   raw/movies.json               Cached raw API response (gitignored)
   processed/                    Cleaned & KPI-enriched CSVs (gitignored)
 reports/figures/                Generated chart PNGs (gitignored)
+logs/pipeline.log                Timestamped run history (gitignored)
 doc/final_report.txt            Key insights, methodology, conclusions
 ```
 
@@ -93,12 +96,22 @@ it walks through the same four steps with explanations for each decision.
 
 All commands assume the project root as the working directory.
 
+## Logging
+
+Every stage logs to both the console and `logs/pipeline.log` (timestamp,
+level, and which stage/module -- e.g. `tmdb_pipeline.fetch`, `03_kpis`).
+If a run fails, the log file has the full traceback and which stage was
+running, even after the terminal that ran it is gone. Per-ID fetch
+failures log at WARNING (a bad/rate-limited ID doesn't stop the batch);
+a stage-ending failure logs at ERROR with the full traceback before
+re-raising.
+
 ## Testing
 
 ```
 pytest
 ```
 
-56 tests cover the cleaning transforms, the KPI ranking/aggregation
+65 tests cover the cleaning transforms, the KPI ranking/aggregation
 logic, and the API-facing functions (network calls mocked via
 `responses` -- no real API calls, no burned quota). See `tests/`.
