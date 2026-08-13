@@ -60,4 +60,3 @@ def run():
     except Exception:
         logger.exception("Step 4 (visualizations) failed.")
         raise
-

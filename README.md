@@ -111,6 +111,6 @@ re-raising.
 pytest
 ```
 
-65 tests cover the cleaning transforms, the KPI ranking/aggregation
+74 tests cover the cleaning transforms, the KPI ranking/aggregation
 logic, and the API-facing functions (network calls mocked via
 `responses` -- no real API calls, no burned quota). See `tests/`.
