@@ -79,10 +79,12 @@ def download_movies(movie_ids, api_key, movie_url, existing_movies=None):
 
     movies = []
     attempted = 0
+    skipped = 0
 
     for movie_id in movie_ids:
         if movie_id_exists(movie_id, existing_movies):
-            logger.info("Movie ID %s already downloaded, skipping.", movie_id)
+            skipped += 1
+            logger.debug("Movie ID %s already downloaded, skipping.", movie_id)
             continue
 
         attempted += 1
@@ -123,6 +125,9 @@ def download_movies(movie_ids, api_key, movie_url, existing_movies=None):
 
         except requests.exceptions.RequestException as error:
             logger.warning("Request failed for ID %s: %s", movie_id, type(error).__name__)
+
+    if skipped:
+        logger.info("%d movie(s) already downloaded, skipped.", skipped)
 
     if attempted and not movies and not existing_movies:
         raise RuntimeError(
